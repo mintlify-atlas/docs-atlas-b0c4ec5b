@@ -1,0 +1,665 @@
+---
+title: 'Nightwatch UI'
+description: 'A comprehensive React UI component library with theming, styled-components, and Material UI integration'
+---
+
+## Overview
+
+Nightwatch UI is Skiff's design system implementation - a modern, accessible component library built with React, styled-components, and Material UI. It provides a complete set of UI primitives for building consistent user interfaces across the Skiff platform.
+
+The library features dual light/dark theming, responsive design patterns, and comprehensive TypeScript support.
+
+## Installation
+
+```bash
+yarn add nightwatch-ui
+```
+
+### Import Styles
+
+```typescript
+import 'nightwatch-ui/dist/esm/index.css';
+```
+
+### Basic Usage
+
+```typescript
+import { Button, Dialog, InputField } from 'nightwatch-ui';
+import { Size, Type, ThemeMode } from 'nightwatch-ui';
+```
+
+## Core Components
+
+### Button
+
+The Button component comes in multiple variants for different use cases.
+
+<Tabs>
+  <Tab title="TextButton">
+    ```typescript
+    import { Button } from 'nightwatch-ui';
+
+    function Example() {
+      return (
+        <Button
+          onClick={() => console.log('Clicked!')}
+          type={Type.PRIMARY}
+          size={Size.MEDIUM}
+        >
+          Click me
+        </Button>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="IconButton">
+    ```typescript
+    import { IconButton, Icon } from 'nightwatch-ui';
+
+    function Example() {
+      return (
+        <IconButton
+          onClick={() => console.log('Clicked!')}
+          icon={Icon.Settings}
+          tooltip="Settings"
+        />
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="With Loading">
+    ```typescript
+    import { Button } from 'nightwatch-ui';
+
+    function Example() {
+      return (
+        <Button
+          onClick={async () => {
+            await saveData();
+          }}
+          loading={isLoading}
+          type={Type.PRIMARY}
+        >
+          Save changes
+        </Button>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+#### Button Props
+
+<ParamField path="children" type="string" required>
+  Button text content
+</ParamField>
+
+<ParamField path="onClick" type="(e: React.MouseEvent) => void | Promise<void>" required>
+  Click event handler
+</ParamField>
+
+<ParamField path="type" type="Type" default="Type.PRIMARY">
+  Button variant: `PRIMARY`, `SECONDARY`, `TERTIARY`, `DESTRUCTIVE`
+</ParamField>
+
+<ParamField path="size" type="Size" default="Size.MEDIUM">
+  Button size: `X_SMALL`, `SMALL`, `MEDIUM`, `LARGE`
+</ParamField>
+
+<ParamField path="icon" type="Icon | IconComponent">
+  Optional start icon
+</ParamField>
+
+<ParamField path="loading" type="boolean">
+  Shows loading spinner
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  Disables button interaction
+</ParamField>
+
+<ParamField path="fullWidth" type="boolean">
+  Expands button to full container width
+</ParamField>
+
+<ParamField path="tooltip" type="string">
+  Tooltip text on hover
+</ParamField>
+
+<ParamField path="forceTheme" type="ThemeMode">
+  Force light or dark theme
+</ParamField>
+
+### Dialog
+
+Modal dialogs for user interactions and confirmations.
+
+<Tabs>
+  <Tab title="Confirm Dialog">
+    ```typescript
+    import { Dialog, DialogType, ButtonGroupItem } from 'nightwatch-ui';
+
+    function ConfirmDialog() {
+      const [open, setOpen] = useState(false);
+
+      return (
+        <Dialog
+          open={open}
+          onClose={() => setOpen(false)}
+          type={DialogType.CONFIRM}
+          title="Delete file?"
+          description="This action cannot be undone."
+        >
+          <ButtonGroupItem
+            label="Cancel"
+            onClick={() => setOpen(false)}
+          />
+          <ButtonGroupItem
+            label="Delete"
+            type={Type.DESTRUCTIVE}
+            onClick={async () => {
+              await deleteFile();
+              setOpen(false);
+            }}
+          />
+        </Dialog>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Input Dialog">
+    ```typescript
+    import { Dialog, DialogType, InputField } from 'nightwatch-ui';
+
+    function InputDialog() {
+      const [value, setValue] = useState('');
+
+      return (
+        <Dialog
+          open={open}
+          onClose={() => setOpen(false)}
+          type={DialogType.INPUT}
+          title="Rename file"
+          inputField={
+            <InputField
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="Enter new name"
+            />
+          }
+        >
+          <ButtonGroupItem label="Cancel" onClick={() => setOpen(false)} />
+          <ButtonGroupItem label="Rename" onClick={handleRename} />
+        </Dialog>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+#### Dialog Props
+
+<ParamField path="open" type="boolean" required>
+  Dialog visibility state
+</ParamField>
+
+<ParamField path="onClose" type="() => void | Promise<void>" required>
+  Close handler
+</ParamField>
+
+<ParamField path="children" type="ButtonGroupItemComponent[] | React.ReactNode" required>
+  Dialog action buttons or custom content
+</ParamField>
+
+<ParamField path="type" type="DialogType" default="DialogType.DEFAULT">
+  Dialog variant: `CONFIRM`, `DEFAULT`, `INPUT`, `PROMOTIONAL`, `SEARCH`, `SETTINGS`, `LANDSCAPE`
+</ParamField>
+
+<ParamField path="title" type="string">
+  Dialog title text
+</ParamField>
+
+<ParamField path="description" type="string">
+  Dialog description text
+</ParamField>
+
+<ParamField path="inputField" type="InputComponent | InputComponent[]">
+  Input fields for the dialog
+</ParamField>
+
+<ParamField path="loading" type="boolean">
+  Shows loading spinner
+</ParamField>
+
+<ParamField path="hideCloseButton" type="boolean">
+  Hides the close (X) button
+</ParamField>
+
+<ParamField path="disableOffClick" type="boolean">
+  Prevents closing on outside click
+</ParamField>
+
+### InputField
+
+Flexible input component with support for icons, validation, and various styles.
+
+<Tabs>
+  <Tab title="Basic Input">
+    ```typescript
+    import { InputField, InputType } from 'nightwatch-ui';
+
+    function Example() {
+      const [value, setValue] = useState('');
+
+      return (
+        <InputField
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Enter your email"
+          type={InputType.EMAIL}
+        />
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="With Icon">
+    ```typescript
+    import { InputField, Icon } from 'nightwatch-ui';
+
+    function SearchInput() {
+      return (
+        <InputField
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search..."
+          icon={Icon.Search}
+        />
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="With Validation">
+    ```typescript
+    import { InputField } from 'nightwatch-ui';
+
+    function ValidatedInput() {
+      const [email, setEmail] = useState('');
+      const error = !isValidEmail(email) ? 'Invalid email address' : undefined;
+
+      return (
+        <InputField
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          error={error}
+          helperText="We'll never share your email"
+        />
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+#### InputField Props
+
+<ParamField path="value" type="string" default="">
+  Input value
+</ParamField>
+
+<ParamField path="onChange" type="(e: React.ChangeEvent<HTMLInputElement>) => void">
+  Change event handler
+</ParamField>
+
+<ParamField path="placeholder" type="string">
+  Placeholder text
+</ParamField>
+
+<ParamField path="type" type="InputType" default="InputType.DEFAULT">
+  Input type: `DEFAULT`, `EMAIL`, `PASSWORD`, `NUMBER`, `TEL`, `URL`
+</ParamField>
+
+<ParamField path="icon" type="Icon">
+  Start icon
+</ParamField>
+
+<ParamField path="endAdornment" type="Icon | React.ReactNode | Array">
+  End icon or custom element
+</ParamField>
+
+<ParamField path="error" type="boolean | string">
+  Error state or error message
+</ParamField>
+
+<ParamField path="helperText" type="string">
+  Helper text below input
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  Disables input
+</ParamField>
+
+<ParamField path="readOnly" type="boolean">
+  Makes input read-only
+</ParamField>
+
+<ParamField path="variant" type="InputFieldVariant" default="DEFAULT">
+  Style variant: `DEFAULT`, `GHOST`
+</ParamField>
+
+<ParamField path="size" type="Size" default="Size.MEDIUM">
+  Input size
+</ParamField>
+
+### Dropdown
+
+Contextual menus with keyboard navigation support.
+
+```typescript
+import { Dropdown, DropdownItem } from 'nightwatch-ui';
+
+function ContextMenu() {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const buttonRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <>
+      <div ref={buttonRef} onClick={() => setShowDropdown(true)}>
+        Options
+      </div>
+      <Dropdown
+        buttonRef={buttonRef}
+        showDropdown={showDropdown}
+        setShowDropdown={setShowDropdown}
+        portal
+      >
+        <DropdownItem label="Edit" icon={Icon.Edit} onClick={handleEdit} />
+        <DropdownItem label="Share" icon={Icon.Share} onClick={handleShare} />
+        <DropdownItem 
+          label="Delete" 
+          icon={Icon.Trash}
+          color={DropdownItemColor.DESTRUCTIVE}
+          onClick={handleDelete}
+        />
+      </Dropdown>
+    </>
+  );
+}
+```
+
+#### Dropdown Props
+
+<ParamField path="showDropdown" type="boolean" default={true}>
+  Dropdown visibility state
+</ParamField>
+
+<ParamField path="setShowDropdown" type="(open: boolean) => void" required>
+  Update dropdown state
+</ParamField>
+
+<ParamField path="buttonRef" type="React.MutableRefObject<HTMLDivElement | null>">
+  Reference to anchor element
+</ParamField>
+
+<ParamField path="portal" type="boolean">
+  Render in portal (recommended for better positioning)
+</ParamField>
+
+<ParamField path="fullWidth" type="boolean">
+  Match anchor width
+</ParamField>
+
+<ParamField path="inputField" type="InputComponent">
+  Search input at top of dropdown
+</ParamField>
+
+<ParamField path="maxHeight" type="number | string">
+  Maximum dropdown height
+</ParamField>
+
+### Tabs
+
+Tabbed navigation component with smooth animations.
+
+```typescript
+import { Tabs, TabsSize } from 'nightwatch-ui';
+
+function TabExample() {
+  const [activeTab, setActiveTab] = useState('overview');
+
+  return (
+    <Tabs
+      size={Size.MEDIUM}
+      tabs={[
+        {
+          label: 'Overview',
+          active: activeTab === 'overview',
+          onClick: () => setActiveTab('overview'),
+          icon: Icon.Home
+        },
+        {
+          label: 'Settings',
+          active: activeTab === 'settings',
+          onClick: () => setActiveTab('settings'),
+          icon: Icon.Settings
+        }
+      ]}
+    />
+  );
+}
+```
+
+### Toast
+
+Toast notifications for temporary messages.
+
+```typescript
+import { Toast } from 'nightwatch-ui';
+import { useToast } from 'nightwatch-ui';
+
+function NotificationExample() {
+  const { enqueueToast } = useToast();
+
+  const showSuccess = () => {
+    enqueueToast({
+      title: 'Success',
+      body: 'Your changes have been saved',
+      type: Type.SUCCESS
+    });
+  };
+
+  return <Button onClick={showSuccess}>Save</Button>;
+}
+```
+
+### Toggle
+
+Toggle switch component.
+
+```typescript
+import { Toggle } from 'nightwatch-ui';
+
+function SettingsToggle() {
+  const [enabled, setEnabled] = useState(false);
+
+  return (
+    <Toggle
+      checked={enabled}
+      onChange={setEnabled}
+      label="Enable notifications"
+    />
+  );
+}
+```
+
+## Complete Component List
+
+Nightwatch UI includes the following components:
+
+- **Button Components**: `Button`, `IconButton`, `ButtonGroup`, `ButtonGroupItem`
+- **Input Components**: `InputField`, `TextArea`, `Select`, `CodeInput`
+- **Display Components**: `Avatar`, `Chip`, `MonoTag`, `Typography`, `Skeleton`, `Facepile`
+- **Feedback Components**: `Dialog`, `Toast`, `CircularProgress`, `Banner`
+- **Navigation Components**: `Tabs`, `Dropdown`, `DropdownItem`, `DropdownSubmenu`
+- **Overlay Components**: `Tooltip`, `Surface`, `Portal`
+- **Layout Components**: `Divider`
+- **Form Components**: `Toggle`
+- **Icon System**: `Icons` with 100+ icons
+
+## Theming
+
+Nightwatch UI uses CSS custom properties for theming, with full light and dark mode support.
+
+### Using Themes
+
+```typescript
+import { ThemeMode } from 'nightwatch-ui';
+
+// Force dark theme on a component
+<Button forceTheme={ThemeMode.DARK}>
+  Dark Button
+</Button>
+
+// Most components support forceTheme prop
+<Dialog forceTheme={ThemeMode.LIGHT}>
+  {/* Light themed dialog */}
+</Dialog>
+```
+
+### Theme Variables
+
+The theme system provides semantic color tokens:
+
+- **Text**: `--text-primary`, `--text-secondary`, `--text-tertiary`, `--text-disabled`, `--text-link`, `--text-destructive`
+- **Icons**: `--icon-primary`, `--icon-secondary`, `--icon-disabled`
+- **Backgrounds**: `--bg-l0-solid`, `--bg-l1-solid`, `--bg-l2-solid`, `--bg-l3-solid`
+- **Borders**: `--border-primary`, `--border-secondary`, `--border-hover`, `--border-active`
+- **Accents**: `--accent-orange-primary`, `--accent-green-primary`, `--accent-blue-primary`, etc.
+
+### Custom Styling
+
+Components support styled-components and custom className props:
+
+```typescript
+import styled from 'styled-components';
+import { Button } from 'nightwatch-ui';
+
+const CustomButton = styled(Button)`
+  border-radius: 20px;
+  text-transform: uppercase;
+`;
+```
+
+## Typography System
+
+```typescript
+import { Typography, TypographySize, TypographyWeight } from 'nightwatch-ui';
+
+function Example() {
+  return (
+    <Typography 
+      size={TypographySize.H3}
+      weight={TypographyWeight.MEDIUM}
+      color="secondary"
+    >
+      Welcome to Skiff
+    </Typography>
+  );
+}
+```
+
+## Icon System
+
+```typescript
+import { Icons, Icon } from 'nightwatch-ui';
+
+function Example() {
+  return (
+    <>
+      <Icons icon={Icon.Mail} size={20} color="primary" />
+      <Icons icon={Icon.Settings} size={24} color="secondary" />
+      <Icons icon={Icon.Trash} size={16} color="destructive" />
+    </>
+  );
+}
+```
+
+## Size System
+
+Consistent sizing across all components:
+
+```typescript
+import { Size } from 'nightwatch-ui';
+
+// Available sizes
+Size.X_SMALL  // Extra small
+Size.SMALL    // Small
+Size.MEDIUM   // Medium (default for most components)
+Size.LARGE    // Large
+```
+
+## Type System
+
+Button and component variants:
+
+```typescript
+import { Type } from 'nightwatch-ui';
+
+Type.PRIMARY      // Primary action (filled)
+Type.SECONDARY    // Secondary action (outlined)
+Type.TERTIARY     // Tertiary action (ghost)
+Type.DESTRUCTIVE  // Destructive action (red)
+```
+
+## Accessibility
+
+All components follow accessibility best practices:
+
+- Proper ARIA attributes
+- Keyboard navigation support
+- Focus management
+- Screen reader compatibility
+- Color contrast compliance
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use semantic component types">
+    Use `Type.DESTRUCTIVE` for delete actions, `Type.PRIMARY` for main CTAs, and `Type.SECONDARY` for alternative actions.
+  </Accordion>
+
+  <Accordion title="Leverage the theming system">
+    Use `forceTheme` sparingly - let components inherit theme from context when possible.
+  </Accordion>
+
+  <Accordion title="Consistent sizing">
+    Stick to the standard `Size` enum values for visual consistency across your application.
+  </Accordion>
+
+  <Accordion title="Keyboard navigation">
+    Always provide `dataTest` props for E2E testing and ensure keyboard accessibility.
+  </Accordion>
+</AccordionGroup>
+
+## TypeScript Support
+
+Nightwatch UI is fully typed with TypeScript. Import types directly:
+
+```typescript
+import type { 
+  ButtonProps, 
+  DialogProps, 
+  InputProps,
+  DropdownProps 
+} from 'nightwatch-ui';
+```
+
+## Dependencies
+
+Core dependencies:
+- `react` ^17.0.2
+- `react-dom` ^17.0.2
+- `styled-components` ^5.3.3
+- `@mui/material` ^5.10.0
+- `framer-motion` ^6.3.3
+- `@floating-ui/react-dom` ^1.0.1
+
+See `libs/nightwatch-ui/package.json:40` for the complete dependency list.

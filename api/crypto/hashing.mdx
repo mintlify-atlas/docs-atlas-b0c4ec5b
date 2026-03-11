@@ -1,0 +1,268 @@
+---
+title: Hashing
+description: Cryptographic hashing functions using SHA-512
+---
+
+The hashing module provides functions for generating cryptographic hashes using the SHA-512 algorithm.
+
+## generateHash
+
+Generates a SHA-512 hash of the given string value.
+
+```typescript
+function generateHash(value: string): string
+```
+
+### Parameters
+
+<ParamField path="value" type="string" required>
+  The string to hash
+</ParamField>
+
+### Returns
+
+<ResponseField name="hash" type="string" required>
+  Base64-encoded SHA-512 hash of the input value (64 bytes)
+</ResponseField>
+
+### Example
+
+```typescript
+import { generateHash } from 'skiff-crypto';
+
+const hash = generateHash('Hello, World!');
+console.log(hash);
+// "base64-encoded-sha512-hash"
+
+// Hashing is deterministic - same input always produces same output
+const hash2 = generateHash('Hello, World!');
+console.log(hash === hash2); // true
+```
+
+## Common Use Cases
+
+### Password Verification
+
+```typescript
+import { generateHash } from 'skiff-crypto';
+
+// Store hash instead of password
+function hashPassword(password: string): string {
+  return generateHash(password);
+}
+
+// Verify password by comparing hashes
+function verifyPassword(password: string, storedHash: string): boolean {
+  const inputHash = generateHash(password);
+  return inputHash === storedHash;
+}
+
+const passwordHash = hashPassword('my-secure-password');
+console.log(passwordHash); // "base64-encoded-hash"
+
+const isValid = verifyPassword('my-secure-password', passwordHash);
+console.log(isValid); // true
+```
+
+**Note**: For password hashing in production, use `createKeyFromSecret()` with Argon2id instead, as it provides additional security through memory-hard key derivation.
+
+### Content Integrity
+
+```typescript
+import { generateHash } from 'skiff-crypto';
+
+// Generate hash for data integrity verification
+function createIntegrityHash(data: string): string {
+  return generateHash(data);
+}
+
+// Verify data hasn't been tampered with
+function verifyIntegrity(data: string, expectedHash: string): boolean {
+  const actualHash = generateHash(data);
+  return actualHash === expectedHash;
+}
+
+const documentContent = 'Important document content';
+const integrityHash = createIntegrityHash(documentContent);
+
+// Later, verify the document hasn't changed
+const isUnmodified = verifyIntegrity(documentContent, integrityHash);
+console.log(isUnmodified); // true
+```
+
+### Unique Identifiers
+
+```typescript
+import { generateHash } from 'skiff-crypto';
+
+// Generate deterministic IDs from content
+function generateContentId(content: string): string {
+  return generateHash(content);
+}
+
+const emailId = generateContentId('user@example.com');
+const documentId = generateContentId(JSON.stringify({
+  title: 'My Document',
+  content: 'Document text',
+  timestamp: '2024-01-01'
+}));
+
+console.log(emailId);
+console.log(documentId);
+```
+
+### Deduplication
+
+```typescript
+import { generateHash } from 'skiff-crypto';
+
+interface Document {
+  id: string;
+  content: string;
+  hash: string;
+}
+
+class DocumentStore {
+  private documents: Map<string, Document> = new Map();
+
+  addDocument(content: string): string | null {
+    const hash = generateHash(content);
+    
+    // Check if document already exists
+    if (this.documents.has(hash)) {
+      console.log('Document already exists');
+      return null;
+    }
+    
+    const doc: Document = {
+      id: crypto.randomUUID(),
+      content,
+      hash
+    };
+    
+    this.documents.set(hash, doc);
+    return doc.id;
+  }
+}
+
+const store = new DocumentStore();
+const id1 = store.addDocument('Hello');
+const id2 = store.addDocument('Hello'); // Returns null - duplicate
+console.log(id1, id2);
+```
+
+## Implementation Details
+
+- **Algorithm**: SHA-512 (Secure Hash Algorithm 512-bit)
+- **Output Size**: 64 bytes (512 bits)
+- **Encoding**: Base64 (results in 88-character string)
+- **Library**: Uses TweetNaCl's `nacl.hash()` implementation
+- **Input Encoding**: UTF-8 string to bytes conversion
+
+### Properties
+
+1. **Deterministic**: Same input always produces same output
+2. **One-way**: Cannot derive input from hash
+3. **Collision-resistant**: Extremely unlikely for two different inputs to produce same hash
+4. **Avalanche effect**: Small change in input drastically changes output
+
+### Example: Demonstrating Hash Properties
+
+```typescript
+import { generateHash } from 'skiff-crypto';
+
+// Deterministic
+const hash1 = generateHash('test');
+const hash2 = generateHash('test');
+console.log(hash1 === hash2); // true
+
+// Avalanche effect - tiny input change = completely different hash
+const hashA = generateHash('test');
+const hashB = generateHash('Test'); // Capital T
+console.log(hashA === hashB); // false
+console.log('Hash A:', hashA);
+console.log('Hash B:', hashB);
+// Hashes are completely different despite one character change
+```
+
+## Performance Considerations
+
+SHA-512 is fast for hashing small to medium-sized strings. For very large data:
+
+```typescript
+import { generateHash } from 'skiff-crypto';
+
+// For small strings - very fast
+const smallHash = generateHash('small string');
+
+// For large strings - still fast but consider chunking for huge data
+const largeData = 'x'.repeat(1000000); // 1MB of data
+const largeHash = generateHash(largeData);
+```
+
+## Security Considerations
+
+### When to Use generateHash
+
+- Content integrity verification
+- Deduplication
+- Deterministic ID generation
+- Non-sensitive data fingerprinting
+
+### When NOT to Use generateHash
+
+**Do NOT use for password storage**. Use `createKeyFromSecret()` instead:
+
+```typescript
+import { createKeyFromSecret } from 'skiff-crypto';
+
+// GOOD: Use Argon2 for passwords
+const passwordHash = await createKeyFromSecret('user-password', 'unique-salt');
+
+// BAD: Don't use SHA-512 for passwords
+// const passwordHash = generateHash('user-password'); // ❌ Insecure!
+```
+
+**Reason**: SHA-512 is too fast, making it vulnerable to brute-force attacks. Argon2 is designed to be slow and memory-hard, protecting against specialized hardware attacks.
+
+### Salting
+
+For security-sensitive hashing, add unique salts:
+
+```typescript
+import { generateHash } from 'skiff-crypto';
+
+function secureHash(value: string, salt: string): string {
+  return generateHash(value + salt);
+}
+
+const salt = crypto.randomUUID(); // Generate unique salt
+const hash = secureHash('sensitive-data', salt);
+
+// Store both hash and salt
+const stored = { hash, salt };
+```
+
+## Comparison with Other Hash Functions
+
+| Function | Algorithm | Output Size | Use Case |
+|----------|-----------|-------------|----------|
+| `generateHash()` | SHA-512 | 64 bytes | General-purpose hashing |
+| `createKeyFromSecret()` | Argon2id | 32 bytes | Password hashing |
+| `createSRPKey()` | HKDF-SHA256 | 32 bytes | SRP authentication |
+| `createPasswordDerivedSecret()` | HKDF-SHA256 | 32 bytes | Key derivation |
+
+## Working with Binary Data
+
+If you need to hash binary data, convert to string first:
+
+```typescript
+import { generateHash } from 'skiff-crypto';
+import { fromByteArray } from 'base64-js';
+
+const binaryData = new Uint8Array([1, 2, 3, 4, 5]);
+const base64String = fromByteArray(binaryData);
+const hash = generateHash(base64String);
+
+console.log(hash);
+```

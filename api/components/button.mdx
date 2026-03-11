@@ -1,0 +1,236 @@
+---
+title: Button
+description: Interactive button components for user actions
+---
+
+## Button
+
+The primary button component for triggering actions in your application. Supports multiple variants, sizes, icons, and loading states.
+
+### Import
+
+```tsx
+import { Button, IconButton } from '@skiff/nightwatch-ui';
+```
+
+### Basic Usage
+
+```tsx
+<Button onClick={() => console.log('Clicked')}>Click me</Button>
+```
+
+### With Icon
+
+```tsx
+<Button 
+  icon={Icon.Plus}
+  onClick={() => console.log('Clicked')}
+>
+  Add Item
+</Button>
+```
+
+### Variants
+
+```tsx
+// Primary button (default)
+<Button type={Type.PRIMARY} onClick={handleClick}>Primary</Button>
+
+// Secondary button
+<Button type={Type.SECONDARY} onClick={handleClick}>Secondary</Button>
+
+// Tertiary button
+<Button type={Type.TERTIARY} onClick={handleClick}>Tertiary</Button>
+
+// Destructive button
+<Button type={Type.DESTRUCTIVE} onClick={handleClick}>Delete</Button>
+```
+
+### Sizes
+
+```tsx
+<Button size={Size.SMALL} onClick={handleClick}>Small</Button>
+<Button size={Size.MEDIUM} onClick={handleClick}>Medium</Button>
+<Button size={Size.LARGE} onClick={handleClick}>Large</Button>
+```
+
+### Loading State
+
+```tsx
+<Button loading onClick={handleClick}>Loading...</Button>
+```
+
+## Button Props
+
+<ParamField path="children" type="string" required>
+  Button text content
+</ParamField>
+
+<ParamField path="onClick" type="(e: React.MouseEvent) => void | Promise<void>" required>
+  Callback fired when the button is clicked
+</ParamField>
+
+<ParamField path="type" type="Type" default="Type.PRIMARY">
+  Button variant type. Options:
+  - `Type.PRIMARY` - Primary action button with solid background
+  - `Type.SECONDARY` - Secondary action button with outlined style
+  - `Type.TERTIARY` - Tertiary action button with minimal styling
+  - `Type.DESTRUCTIVE` - Destructive action button (e.g., delete)
+</ParamField>
+
+<ParamField path="size" type="ButtonSize" default="Size.MEDIUM">
+  Button size. Options: `Size.SMALL`, `Size.MEDIUM`, `Size.LARGE`
+</ParamField>
+
+<ParamField path="icon" type="Icon | IconComponent">
+  Icon to display at the start of the button
+</ParamField>
+
+<ParamField path="loading" type="boolean">
+  Shows a loading spinner. The button remains clickable unless also disabled
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default={false}>
+  Disables the button, preventing clicks and showing disabled state
+</ParamField>
+
+<ParamField path="active" type="boolean" default={false}>
+  Controls the active/selected state of the button
+</ParamField>
+
+<ParamField path="fullWidth" type="boolean" default={false}>
+  Makes the button expand to fill its container width
+</ParamField>
+
+<ParamField path="compact" type="boolean" default={false}>
+  Applies compact styling with reduced padding
+</ParamField>
+
+<ParamField path="floatRight" type="boolean" default={false}>
+  Floats the button to the right of its container
+</ParamField>
+
+<ParamField path="tooltip" type="string">
+  Tooltip text displayed on hover
+</ParamField>
+
+<ParamField path="forceTheme" type="ThemeMode">
+  Overrides the current theme (light/dark)
+</ParamField>
+
+<ParamField path="className" type="string">
+  Custom CSS class name for styling
+</ParamField>
+
+<ParamField path="style" type="React.CSSProperties">
+  Inline styles for customization
+</ParamField>
+
+<ParamField path="id" type="string">
+  HTML id attribute
+</ParamField>
+
+<ParamField path="dataTest" type="string">
+  Test identifier for end-to-end tests
+</ParamField>
+
+## IconButton
+
+A button component that displays only an icon, useful for compact UIs and toolbars.
+
+### Basic Usage
+
+```tsx
+<IconButton 
+  icon={Icon.Settings}
+  onClick={() => console.log('Settings clicked')}
+/>
+```
+
+### With Tooltip
+
+```tsx
+<IconButton 
+  icon={Icon.Edit}
+  tooltip="Edit item"
+  onClick={handleEdit}
+/>
+```
+
+### Variants
+
+```tsx
+// Filled variant (default)
+<IconButton 
+  icon={Icon.Trash}
+  variant={FilledVariant.FILLED}
+  onClick={handleDelete}
+/>
+
+// Unfilled variant
+<IconButton 
+  icon={Icon.More}
+  variant={FilledVariant.UNFILLED}
+  onClick={handleMore}
+/>
+```
+
+## IconButton Props
+
+<ParamField path="icon" type="Icon | IconComponent" required>
+  Icon to display in the button
+</ParamField>
+
+<ParamField path="onClick" type="(e: React.MouseEvent) => void | Promise<void>" required>
+  Callback fired when the button is clicked
+</ParamField>
+
+<ParamField path="size" type="ButtonSize" default="Size.MEDIUM">
+  Button size. Options: `Size.SMALL`, `Size.MEDIUM`, `Size.LARGE`
+</ParamField>
+
+<ParamField path="type" type="IconButtonType" default="Type.PRIMARY">
+  Button type for coloring. Options: `Type.PRIMARY`, `Type.SECONDARY`, `Type.TERTIARY`, `Type.DESTRUCTIVE`
+</ParamField>
+
+<ParamField path="variant" type="FilledVariant" default="FilledVariant.FILLED">
+  Visual variant. Options:
+  - `FilledVariant.FILLED` - Solid background
+  - `FilledVariant.UNFILLED` - Transparent background
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default={false}>
+  Disables the button
+</ParamField>
+
+<ParamField path="active" type="boolean" default={false}>
+  Controls the active/selected state
+</ParamField>
+
+<ParamField path="tooltip" type="string | JSX.Element">
+  Tooltip content displayed on hover
+</ParamField>
+
+<ParamField path="forceTheme" type="ThemeMode">
+  Overrides the current theme
+</ParamField>
+
+<ParamField path="animationProps" type="HTMLMotionProps<'div'>">
+  Framer Motion animation properties for the icon
+</ParamField>
+
+<ParamField path="className" type="string">
+  Custom CSS class name
+</ParamField>
+
+<ParamField path="style" type="React.CSSProperties">
+  Inline styles
+</ParamField>
+
+<ParamField path="id" type="string">
+  HTML id attribute
+</ParamField>
+
+<ParamField path="dataTest" type="string">
+  Test identifier for e2e tests
+</ParamField>

@@ -1,0 +1,648 @@
+---
+title: Private Search
+description: Client-side encrypted search indexing that maintains privacy
+icon: magnifying-glass
+---
+
+# Private Search
+
+Skiff implements client-side encrypted search that allows users to search their encrypted data without exposing plaintext content to servers. This is accomplished through local search indexing using MiniSearch and encrypted index storage.
+
+## Overview
+
+Private search in Skiff works by:
+
+1. **Building search indices locally** on the client using MiniSearch
+2. **Encrypting the entire search index** before storage
+3. **Storing encrypted indices** in IndexedDB
+4. **Decrypting indices locally** when performing searches
+5. **Never sending plaintext** queries or content to servers
+
+This ensures that:
+- Servers never see your search queries
+- Servers never see what content matches your searches
+- All indexing and searching happens client-side
+- Search indices remain private even if stored data is compromised
+
+## MiniSearch Implementation
+
+Skiff uses [MiniSearch](https://github.com/lucaong/minisearch), a lightweight full-text search engine for JavaScript.
+
+### Search Index Structure
+
+The search index stores:
+
+```typescript
+interface StoredSearchIndex<T extends IndexedItemBase, IndexMetadata> {
+  serializedIndex: AsPlainObject;  // MiniSearch index as JSON
+  indexMetadata: IndexMetadata;     // Custom metadata
+  idToUpdatedAt: { [id: string]: number }; // Track item freshness
+}
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:16-20`
+
+### Creating a Search Index
+
+Search indices are created with specific options for the content type:
+
+```typescript
+export const createSearchIndexType = <IndexedItem extends IndexedItemBase, IndexMetadata>(
+  type: SearchClient,
+  minisearchOptions: Options<IndexedItem>,
+  searchIndexIDBKey: (userID: string) => string,
+  defaultMetadata: IndexMetadata
+) => {
+  const searchIndexDatagram = createRawCompressedJSONDatagram<StoredSearchIndex<IndexedItem, IndexMetadata>>(
+    `ddl://skiff/${type}SearchIndexDatagram`,
+    '0.8.0',
+    new Range('0.8.*')
+  );
+
+  return class SearchIndex {
+    // ... implementation
+  };
+};
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:24-36`
+
+**Key features:**
+- Uses compressed JSON datagram for efficient storage
+- Version constraint allows compatible updates
+- Type parameter customizes for different search clients (email, documents, etc.)
+- Metadata tracks indexing progress and state
+
+### Loading or Creating an Index
+
+```typescript
+static async loadOrCreate(userID: string, userKeys: { publicKey: string; privateKey: string }) {
+  const encryptedSearchData = await IDB.get(searchIndexIDBKey(userID));
+  return new SearchIndex(userID, userKeys, encryptedSearchData);
+}
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:37-41`
+
+The constructor handles both cases:
+
+```typescript
+constructor(
+  public userID: string,
+  public userKeys: { publicKey: string; privateKey: string },
+  encryptedSearchData: any
+) {
+  if (encryptedSearchData) {
+    try {
+      const decryptedSearchData = decryptSearchIndex(
+        encryptedSearchData,
+        userKeys.publicKey,
+        userKeys.privateKey,
+        searchIndexDatagram
+      );
+      this.miniSearch = MiniSearch.loadJS<IndexedItem>(
+        decryptedSearchData.searchIndex.serializedIndex,
+        minisearchOptions
+      );
+      this.symmetricKey = decryptedSearchData.symmetricKey;
+      this.metadata = decryptedSearchData.searchIndex.indexMetadata || defaultMetadata;
+      this.idToUpdatedAt = decryptedSearchData.searchIndex.idToUpdatedAt || {};
+      return;
+    } catch (e) {
+      console.error(`Error while decrypting or loading ${type} search index, cleaning out state`, e);
+      void IDB.del(searchIndexIDBKey(userID));
+    }
+  }
+  this.miniSearch = new MiniSearch<IndexedItem>(minisearchOptions);
+  this.symmetricKey = generateSymmetricKey();
+  this.metadata = defaultMetadata;
+}
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:54-83`
+
+## Encryption Layer
+
+### Encrypting the Search Index
+
+Search indices use a hybrid encryption approach:
+
+```typescript
+export function encryptSearchIndex<T>(
+  searchData: T,
+  publicKey: string,
+  privateKey: string,
+  symmetricKey: string,
+  datagram: Datagram<T>
+): EncryptedSearchData {
+  // Encrypt the search index with symmetric key (fast for large data)
+  const encryptedSearchIndex = encryptSymmetric(searchData, symmetricKey, datagram);
+  
+  // Encrypt the symmetric key with user's keypair (secure key storage)
+  const encryptedKey = stringEncryptAsymmetric(privateKey, { key: publicKey }, symmetricKey);
+
+  return { encryptedKey, encryptedSearchIndex };
+}
+```
+
+Reference: `libs/skiff-front-search/src/encryption.ts:35-46`
+
+**Why this approach?**
+- Symmetric encryption is fast for large search indices
+- Asymmetric encryption secures the symmetric key
+- User can decrypt with their private key
+- No separate key management needed
+
+### Decrypting the Search Index
+
+```typescript
+export function decryptSearchIndex<T>(
+  encryptedSearchData: EncryptedSearchData,
+  publicKey: string,
+  privateKey: string,
+  datagram: Datagram<T>
+) {
+  const { encryptedSearchIndex, encryptedKey } = encryptedSearchData;
+
+  // First, decrypt the symmetric key with user's keypair
+  const symmetricKey = stringDecryptAsymmetric(privateKey, { key: publicKey }, encryptedKey);
+
+  // Then, decrypt the search index with the symmetric key
+  const searchIndex = decryptSymmetric(encryptedSearchIndex, symmetricKey, datagram);
+  
+  return { symmetricKey, searchIndex };
+}
+```
+
+Reference: `libs/skiff-front-search/src/encryption.ts:16-31`
+
+**Decryption flow:**
+1. Retrieve encrypted search data from IndexedDB
+2. Decrypt the symmetric key using the user's private key
+3. Decrypt the search index using the symmetric key
+4. Load the decrypted index into MiniSearch
+5. Ready to search!
+
+## Index Operations
+
+### Adding Items to the Index
+
+```typescript
+add(item: IndexedItem) {
+  try {
+    this.miniSearch.add(item);
+  } catch (error) {
+    // If item already exists, discard and re-add
+    this.miniSearch.discard(item.id);
+    this.miniSearch.add(item);
+  }
+  this.idToUpdatedAt[item.id] = item.updatedAt;
+  void this.save();
+}
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:119-128`
+
+### Removing Items from the Index
+
+```typescript
+remove(id: string) {
+  try {
+    this.miniSearch.discard(id);
+    delete this.idToUpdatedAt[id];
+    void this.save();
+  } catch (error) {
+    console.error('Error removing item from miniSearch index', error);
+  }
+}
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:130-138`
+
+### Searching the Index
+
+```typescript
+search(
+  query: string,
+  searchClient: SearchClient,
+  options?: SearchOptions,
+  dateRangeFilter?: DateRangeFilter,
+  sort?: boolean,
+  autoSuggest?: boolean,
+  preferFullMatches?: boolean
+): IndexedItemBase[] | MiniSearchResult[] {
+  if (!query) {
+    return this.getRecentItems();
+  }
+
+  const defaultSearchOptions = getDefaultSearchOptions(searchClient, query, dateRangeFilter);
+
+  const customOptions = {
+    fuzzy: defaultSearchOptions.fuzzy,
+    prefix: defaultSearchOptions.prefix,
+    ...options,
+    ...(dateRangeFilter ? { filter: getCustomDateFilter(dateRangeFilter) } : {})
+  };
+
+  const searchOptions = options ? customOptions : defaultSearchOptions;
+  
+  const andedResults = preferFullMatches
+    ? this.miniSearch.search(query, {
+        ...searchOptions,
+        combineWith: 'AND'
+      })
+    : [];
+  
+  // If there are results matching all terms, return those; otherwise widen to OR
+  const miniSearchResults = andedResults.length ? andedResults : this.miniSearch.search(query, searchOptions);
+
+  const sortableResults = getSortableSearchResults(miniSearchResults);
+
+  return sort ? chronSortResults(sortableResults) : sortableResults;
+}
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:149-193`
+
+**Search features:**
+- **Empty query**: Returns recent items
+- **Fuzzy matching**: Tolerates typos and misspellings
+- **Prefix matching**: Matches partial words
+- **Date filtering**: Filter by date ranges
+- **AND/OR logic**: Prefer full matches, fall back to partial
+- **Sorting**: Chronological or relevance-based
+- **Auto-suggest**: Provides query suggestions
+
+### Saving the Index
+
+The save operation is debounced for performance:
+
+```typescript
+save = debounce(
+  async () => {
+    await this.miniSearch.vacuum();
+    await IDB.set(
+      searchIndexIDBKey(this.userID),
+      encryptSearchIndex(
+        {
+          serializedIndex: this.miniSearch.toJSON(),
+          indexMetadata: this.metadata,
+          idToUpdatedAt: this.idToUpdatedAt
+        },
+        this.userKeys.publicKey,
+        this.userKeys.privateKey,
+        this.symmetricKey,
+        searchIndexDatagram
+      )
+    );
+    console.log('SAVED index');
+  },
+  5_000,  // Debounce: wait 5 seconds after last change
+  {
+    maxWait: 30_000 // Max wait: save every 30 seconds regardless
+  }
+);
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:85-108`
+
+**Why debouncing?**
+- Reduces frequent encryption/storage operations
+- Batches multiple updates together
+- Ensures index is saved regularly (max 30 seconds)
+- Calls `vacuum()` to optimize index before saving
+
+## Index Maintenance
+
+### Checking Index Freshness
+
+```typescript
+listStaleOrMissing(itemUpdatedAt: { id: string; updatedAt: number }[]) {
+  const staleItems = itemUpdatedAt.filter((doc) => {
+    const hasIndexedItem = this.miniSearch.has(doc.id);
+    const curUpdatedAt = this.idToUpdatedAt[doc.id];
+    if (!hasIndexedItem || (doc.updatedAt && doc.updatedAt > curUpdatedAt)) {
+      return true;
+    }
+    return false;
+  });
+
+  return staleItems.map((doc) => doc.id);
+}
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:210-221`
+
+This identifies items that:
+- Are not yet indexed
+- Have been updated since indexing
+
+### Pruning Deleted Items
+
+```typescript
+prune(existingIds: string[]) {
+  const jsonIndex = this.miniSearch.toJSON();
+  const allDocIDs = Object.values(jsonIndex.documentIds) as Array<string>;
+  const idsToPrune = allDocIDs.filter((id) => !existingIds.includes(id));
+  idsToPrune.forEach((idToPrune) => {
+    try {
+      this.miniSearch.discard(idToPrune);
+    } catch (error) {
+      console.error('Error removing item from miniSearch index', error);
+    }
+  });
+  return idsToPrune;
+}
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:195-207`
+
+This removes items from the index that no longer exist in the source data.
+
+### Recent Items
+
+When no search query is provided, show recently updated items:
+
+```typescript
+getRecentItems(): IndexedItemBase[] {
+  // Find most recent ids from this.idToUpdatedAt
+  const recentIds = Object.entries(this.idToUpdatedAt)
+    .sort((a, b) => b[1] - a[1])  // Sort by updatedAt descending
+    .map((entry) => entry[0])
+    .slice(0, NUM_RECENT);  // Take top 10
+  return recentIds.map((id) => ({ id, updatedAt: this.idToUpdatedAt[id] }));
+}
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:140-147`
+
+## Privacy Guarantees
+
+### What Stays Private
+
+1. **Search queries**: Never sent to servers
+2. **Search results**: Computed entirely client-side
+3. **Index content**: Encrypted before storage
+4. **Plaintext data**: Never exposed outside the client
+5. **User behavior**: Search patterns not tracked
+
+### What Servers See
+
+1. **Encrypted index data**: Meaningless ciphertext
+2. **IndexedDB operations**: Normal browser storage
+3. **Document retrieval**: When you open a search result (but not the query)
+
+### Attack Scenarios
+
+**Scenario: Server compromise**
+- Encrypted indices remain secure
+- Attacker cannot decrypt without user's private key
+- No plaintext queries or results leaked
+
+**Scenario: Network interception**
+- Only encrypted data transmitted
+- No search queries sent over network
+- Search happens entirely offline
+
+**Scenario: Client malware**
+- If client is compromised, plaintext is accessible
+- This is true for any client-side encryption
+- Use endpoint security and secure devices
+
+## Performance Optimization
+
+### Compressed Storage
+
+Search indices use gzip compression:
+
+```typescript
+const searchIndexDatagram = createRawCompressedJSONDatagram<StoredSearchIndex<IndexedItem, IndexMetadata>>(
+  `ddl://skiff/${type}SearchIndexDatagram`,
+  '0.8.0',
+  new Range('0.8.*')
+);
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:30-34`
+
+This reduces storage size significantly for large indices.
+
+### Debounced Saves
+
+As shown earlier, saves are debounced:
+- Wait 5 seconds after the last change
+- Force save every 30 seconds maximum
+- Reduces encryption overhead
+
+### Index Vacuum
+
+Before saving, the index is vacuumed to remove fragmentation:
+
+```typescript
+await this.miniSearch.vacuum();
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:87`
+
+This optimizes the index structure for smaller size and faster searches.
+
+### Memoization
+
+Decryption results can be memoized to avoid repeated decryption:
+
+```typescript
+export const stringDecryptAsymmetric = memoize(
+  (myPrivateKey: string, theirPublicKey: { key: string }, encryptedText: string) => {
+    const sharedKey = nacl.box.before(toByteArray(theirPublicKey.key), toByteArray(myPrivateKey));
+    const decrypted = decryptAsymmetric(sharedKey, encryptedText);
+    return decrypted;
+  },
+  (myPrivateKey, theirPublicKey, encryptedText) => JSON.stringify([myPrivateKey, theirPublicKey.key, encryptedText])
+);
+```
+
+Reference: `libs/skiff-crypto/src/asymmetricEncryption.ts:74-81`
+
+## Implementation Example
+
+Here's a complete example of implementing private search:
+
+```typescript
+import { createSearchIndexType } from 'skiff-front-search';
+import { generatePublicPrivateKeyPair } from 'skiff-crypto';
+
+// Define your indexed item structure
+interface EmailIndexedItem {
+  id: string;
+  updatedAt: number;
+  subject: string;
+  body: string;
+  from: string;
+  to: string;
+}
+
+// Configure MiniSearch options
+const minisearchOptions = {
+  fields: ['subject', 'body', 'from', 'to'],
+  storeFields: ['subject', 'from'],
+  searchOptions: {
+    boost: { subject: 2 },  // Boost subject matches
+    fuzzy: 0.2,
+    prefix: true
+  }
+};
+
+// Create the search index class
+const EmailSearchIndex = createSearchIndexType(
+  'skemail',
+  minisearchOptions,
+  (userID) => `search-index-${userID}`,
+  { lastIndexed: Date.now() }
+);
+
+// Usage
+async function initializeSearch() {
+  // Generate or retrieve user keys
+  const userKeys = generatePublicPrivateKeyPair();
+  
+  // Load or create the search index
+  const searchIndex = await EmailSearchIndex.loadOrCreate(
+    'user123',
+    userKeys
+  );
+  
+  // Add items to the index
+  searchIndex.add({
+    id: 'email1',
+    updatedAt: Date.now(),
+    subject: 'Meeting tomorrow',
+    body: 'Let\'s discuss the project roadmap',
+    from: 'alice@example.com',
+    to: 'bob@example.com'
+  });
+  
+  // Search the index
+  const results = searchIndex.search(
+    'roadmap',
+    'skemail',
+    undefined,  // Use default search options
+    undefined,  // No date filter
+    true,       // Sort results
+    false,      // No auto-suggest
+    true        // Prefer full matches
+  );
+  
+  console.log('Search results:', results);
+  
+  // Index saves automatically (debounced)
+  // Or force save:
+  await searchIndex.save.flush();
+}
+
+initializeSearch();
+```
+
+## Best Practices
+
+### Index Design
+
+1. **Choose indexed fields carefully**: Only index searchable content
+2. **Use field boosting**: Prioritize important fields (titles, subjects)
+3. **Store minimal fields**: Don't store entire documents, just IDs and snippets
+4. **Update incrementally**: Add/remove items as they change
+
+### Performance
+
+1. **Batch updates**: Add multiple items before saving
+2. **Prune regularly**: Remove deleted items from the index
+3. **Vacuum periodically**: Optimize index structure
+4. **Use compression**: Enable for large indices
+5. **Lazy load**: Don't decrypt index until needed
+
+### Security
+
+1. **Protect private keys**: Never expose user's private key
+2. **Validate inputs**: Sanitize search queries and indexed content
+3. **Clear on logout**: Remove decrypted indices from memory
+4. **Monitor index size**: Prevent DoS through index bloat
+5. **Use HTTPS**: Protect data in transit
+
+### User Experience
+
+1. **Show recent items**: Display recent docs when query is empty
+2. **Provide feedback**: Show indexing progress
+3. **Handle errors gracefully**: Rebuild corrupt indices
+4. **Auto-suggest**: Help users find content faster
+5. **Highlight matches**: Show why results matched
+
+## Limitations
+
+### What Private Search Can't Do
+
+1. **Server-side ranking**: All ranking must be client-side
+2. **Aggregations**: Can't aggregate across users' data
+3. **Global search**: Each user's index is separate
+4. **Instant updates**: New content requires re-indexing
+5. **Cross-device sync**: Each device maintains its own index
+
+### Performance Considerations
+
+1. **Index size**: Large indices take longer to encrypt/decrypt
+2. **Indexing time**: Building initial index can be slow
+3. **Memory usage**: Index must fit in browser memory
+4. **Battery impact**: Encryption/decryption uses CPU
+5. **Storage limits**: IndexedDB has size limits (varies by browser)
+
+## Troubleshooting
+
+### Index Not Saving
+
+**Problem:** Changes to index aren't persisted
+
+**Solutions:**
+- Check IndexedDB quota (may be full)
+- Ensure save debounce isn't preventing saves
+- Call `save.flush()` to force immediate save
+- Check browser console for errors
+
+### Search Not Working
+
+**Problem:** Queries return no results
+
+**Solutions:**
+- Verify items are actually indexed (`searchIndex.isIndexed(item)`)
+- Check search field configuration in options
+- Try broader search options (more fuzzy, prefix matching)
+- Ensure indexed fields contain searchable text
+
+### Performance Issues
+
+**Problem:** Search is slow or freezing browser
+
+**Solutions:**
+- Reduce index size (fewer fields, prune old items)
+- Enable compression in datagram
+- Use Web Workers for indexing (not shown here)
+- Limit search result count
+- Optimize MiniSearch options
+
+### Decryption Failures
+
+**Problem:** Can't load encrypted index
+
+**Solutions:**
+- Verify user keys are correct
+- Check datagram version constraints
+- Clear corrupt index and rebuild
+- Check browser console for specific error
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Encryption" icon="lock" href="/cryptography/encryption">
+    Learn about the encryption methods used for search indices
+  </Card>
+  <Card title="Key Management" icon="key" href="/cryptography/key-management">
+    Understand how to manage cryptographic keys
+  </Card>
+</CardGroup>

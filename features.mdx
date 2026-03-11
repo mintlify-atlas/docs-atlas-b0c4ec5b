@@ -1,0 +1,306 @@
+---
+title: Skiff Features
+description: Comprehensive overview of features across Mail, Calendar, Pages, and Drive applications
+---
+
+# Skiff Features
+
+Skiff provides a complete suite of privacy-first productivity tools. All features are built with end-to-end encryption as the foundation, ensuring your data remains private and secure.
+
+## Skiff Mail Features
+
+Skiff Mail is a fully-featured email client with end-to-end encryption for all messages between Skiff users.
+
+<CardGroup cols={2}>
+  <Card title="End-to-End Encryption" icon="lock">
+    All messages between Skiff users are automatically end-to-end encrypted using asymmetric cryptography
+  </Card>
+  <Card title="External Email Support" icon="envelope-open">
+    Send and receive emails from Gmail, Outlook, and other providers while keeping local copies encrypted
+  </Card>
+  <Card title="Rich Text Composer" icon="pen-to-square">
+    Compose emails with rich formatting, attachments, and inline images using TipTap editor
+  </Card>
+  <Card title="Schedule Send" icon="clock">
+    Schedule emails to be sent at a specific time in the future
+  </Card>
+  <Card title="Email Aliases" icon="at">
+    Create multiple email aliases to organize and protect your identity
+  </Card>
+  <Card title="Custom Domains" icon="globe">
+    Use your own domain for professional email addresses
+  </Card>
+  <Card title="Labels & Filters" icon="tags">
+    Organize emails with custom labels and automated filtering rules
+  </Card>
+  <Card title="Bulk Actions" icon="layer-group">
+    Perform actions on multiple emails simultaneously for efficient inbox management
+  </Card>
+</CardGroup>
+
+### Mail-Specific Technologies
+
+The email application leverages several specialized libraries from the monorepo:
+
+```typescript
+// From skemail-web/package.json
+import { encryptSymmetric } from 'skiff-crypto';
+import { generatePublicPrivateKeyPair } from 'skiff-crypto';
+```
+
+Key dependencies include:
+- **Email parsing**: `eml-format` for parsing email files
+- **File handling**: `file-saver` for downloading attachments
+- **Drag & Drop**: `react-dnd` for message organization
+- **Rich text**: TipTap extensions for email composition
+
+## Skiff Calendar Features
+
+Private calendar application with end-to-end encryption for all event details, attendees, and metadata.
+
+<CardGroup cols={2}>
+  <Card title="Encrypted Events" icon="calendar-days">
+    Event titles, descriptions, locations, and attendee lists are all end-to-end encrypted
+  </Card>
+  <Card title="Multiple Views" icon="table-cells">
+    View your schedule in day, week, month, or agenda formats
+  </Card>
+  <Card title="Event Scheduling" icon="user-clock">
+    Create events with attendees, reminders, and recurring patterns
+  </Card>
+  <Card title="Participant Suggestions" icon="users">
+    Smart suggestions for event participants based on your contacts
+  </Card>
+  <Card title="Time Zone Support" icon="earth-americas">
+    Automatic time zone handling for global scheduling
+  </Card>
+  <Card title="Import/Export" icon="file-export">
+    ICS file support for importing and exporting calendar events
+  </Card>
+</CardGroup>
+
+### Calendar Technologies
+
+```typescript
+// Calendar event encryption
+import { decryptSessionKey } from 'skiff-crypto';
+import { ICS } from 'skiff-ics';
+```
+
+The calendar application includes:
+- **ICS support**: Custom `skiff-ics` library for calendar file handling (libs/skiff-ics:1)
+- **Date handling**: `dayjs` for flexible date operations
+- **Time zones**: `timezones-list` for comprehensive timezone support
+- **Encrypted storage**: All events encrypted before sync
+
+## Skiff Pages Features
+
+Collaborative document editor with real-time collaboration and end-to-end encryption.
+
+<CardGroup cols={2}>
+  <Card title="Rich Text Editing" icon="file-lines">
+    Full-featured document editor powered by ProseMirror with collaborative editing
+  </Card>
+  <Card title="Mathematical Equations" icon="square-root-variable">
+    LaTeX support for mathematical notation using KaTeX
+  </Card>
+  <Card title="Code Blocks" icon="code">
+    Syntax highlighting for 15+ programming languages via CodeMirror
+  </Card>
+  <Card title="Tables & Lists" icon="table">
+    Advanced table editing with merged cells and complex formatting
+  </Card>
+  <Card title="Images & Embeds" icon="image">
+    Insert and resize images, with support for drag-and-drop uploads
+  </Card>
+  <Card title="Real-time Collaboration" icon="users">
+    Multiple users can edit documents simultaneously with conflict resolution
+  </Card>
+  <Card title="Version History" icon="clock-rotate-left">
+    Track changes and restore previous versions of documents
+  </Card>
+  <Card title="Export Options" icon="download">
+    Export documents as PDF, Markdown, or plain text
+  </Card>
+</CardGroup>
+
+### Pages Editor Technologies
+
+The Pages editor is built on the `skiff-prosemirror` library (libs/skiff-prosemirror:1):
+
+```typescript
+// Rich text editor with encryption
+import { EditorSchema } from 'skiff-prosemirror';
+import { encryptDatagramV2 } from 'skiff-crypto';
+```
+
+Supported languages for code blocks:
+- JavaScript, TypeScript, Python, Rust
+- C++, Java, PHP, SQL
+- HTML, CSS, Markdown, JSON
+- And more via CodeMirror extensions
+
+## Skiff Drive Features
+
+Secure file storage with end-to-end encryption for all uploaded files and folder structures.
+
+<CardGroup cols={2}>
+  <Card title="Encrypted Storage" icon="hard-drive">
+    All files are encrypted on your device before upload using symmetric encryption
+  </Card>
+  <Card title="File Sharing" icon="share">
+    Share files and folders with other Skiff users while maintaining encryption
+  </Card>
+  <Card title="Folder Organization" icon="folder-tree">
+    Organize files in nested folders with encrypted names and metadata
+  </Card>
+  <Card title="File Preview" icon="eye">
+    Preview PDFs, images, and documents without downloading
+  </Card>
+  <Card title="Drag & Drop Upload" icon="upload">
+    Upload multiple files via drag-and-drop interface
+  </Card>
+  <Card title="Version Control" icon="code-branch">
+    Track file versions and restore previous versions
+  </Card>
+</CardGroup>
+
+### Drive Technologies
+
+```typescript
+// File encryption and compression
+import { encryptSymmetric } from 'skiff-crypto';
+import { zip, unzip } from 'fflate';
+```
+
+Key libraries:
+- **Compression**: `fflate` for fast file compression
+- **File handling**: `jszip` for ZIP archive creation
+- **PDF generation**: `jspdf` for PDF creation
+- **Preview**: `react-pdf` for PDF viewing
+
+## Cryptography Features
+
+The `skiff-crypto` library (libs/skiff-crypto:1) provides the cryptographic foundation for all Skiff applications.
+
+<Accordion title="Symmetric Encryption">
+  ChaCha20Poly1305-based symmetric encryption for file and message content:
+  
+  ```javascript
+  const symmetricKey = skiffCrypto.generateSymmetricKey();
+  const TestDatagram = skiffCrypto.createJSONWrapperDatagram('ddl://test');
+  const encrypted = skiffCrypto.encryptSymmetric(plaintext, symmetricKey, TestDatagram);
+  ```
+</Accordion>
+
+<Accordion title="Asymmetric Encryption">
+  TweetNaCl-based asymmetric encryption for key exchange and user-to-user encryption:
+  
+  ```javascript
+  const keypair = skiffCrypto.generatePublicPrivateKeyPair();
+  const encrypted = skiffCrypto.stringEncryptAsymmetric(
+    keypair.privateKey, 
+    { key: keypair.publicKey }, 
+    plaintext
+  );
+  ```
+</Accordion>
+
+<Accordion title="Datagram System">
+  Version-aware data structure for managing encrypted objects with metadata:
+  
+  - Automatic versioning for backward compatibility
+  - Integrity verification with checksums
+  - Efficient serialization with Protocol Buffers
+</Accordion>
+
+<Accordion title="Key Derivation">
+  Secure key derivation using Argon2 for password-based encryption:
+  
+  ```javascript
+  import argon2 from 'argon2-browser';
+  // Used for deriving encryption keys from user passwords
+  ```
+</Accordion>
+
+## Search Features
+
+Skiff implements private, client-side search across all applications using the `skiff-front-search` library (libs/skiff-front-search:1).
+
+<CardGroup cols={2}>
+  <Card title="Encrypted Indexing" icon="magnifying-glass">
+    Search indexes are created locally and stored encrypted
+  </Card>
+  <Card title="Fast Search" icon="bolt">
+    MiniSearch engine provides instant results across thousands of items
+  </Card>
+  <Card title="Full-Text Search" icon="text">
+    Search email content, document text, and file names
+  </Card>
+  <Card title="Web Worker" icon="microchip">
+    Search runs in background threads to maintain UI responsiveness
+  </Card>
+</CardGroup>
+
+### Search Implementation
+
+```typescript
+// From skiff-front-search
+import MiniSearch from 'minisearch';
+import { decryptSearchIndex } from 'skiff-crypto';
+
+// Search runs in Web Workers for performance
+import { wrap } from 'comlink';
+```
+
+Learn more about Skiff's private search in the [blog post](https://skiff.com/blog/private-search).
+
+## Additional Features
+
+<CardGroup cols={3}>
+  <Card title="Dark Mode" icon="moon">
+    System-aware dark mode for comfortable viewing
+  </Card>
+  <Card title="Keyboard Shortcuts" icon="keyboard">
+    Extensive keyboard shortcuts via react-hotkeys
+  </Card>
+  <Card title="Mobile Responsive" icon="mobile">
+    Fully responsive design for mobile devices
+  </Card>
+  <Card title="Offline Support" icon="wifi">
+    Service workers enable offline access to cached data
+  </Card>
+  <Card title="Multi-language" icon="language">
+    Support for multiple languages and locales
+  </Card>
+  <Card title="Accessibility" icon="universal-access">
+    ARIA labels and keyboard navigation for accessibility
+  </Card>
+</CardGroup>
+
+## Developer Features
+
+For developers working with Skiff:
+
+<Tip>
+The Skiff monorepo includes shared libraries that can be used independently:
+- `skiff-crypto`: Cryptographic functions
+- `skiff-utils`: Utility functions
+- `skiff-front-utils`: Frontend utilities
+- `nightwatch-ui`: UI component library
+</Tip>
+
+### Key Technologies
+
+| Technology | Purpose | Version |
+|------------|---------|---------|
+| React | UI Framework | 17.0.2 |
+| TypeScript | Type Safety | 5.0.0+ |
+| Apollo Client | GraphQL Client | 3.5.10+ |
+| Redux Toolkit | State Management | 1.8.0+ |
+| ProseMirror | Rich Text Editing | 1.x |
+| TweetNaCl | Cryptography | 1.0.3 |
+
+<Note>
+All dependencies and versions are managed via Yarn workspaces for consistent builds across the monorepo.
+</Note>

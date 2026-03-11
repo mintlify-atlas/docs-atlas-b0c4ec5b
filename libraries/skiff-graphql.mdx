@@ -1,0 +1,414 @@
+---
+title: "skiff-graphql"
+description: "GraphQL schema types and error utilities"
+---
+
+## Overview
+
+`skiff-graphql` provides auto-generated TypeScript types from the GraphQL schema, error classes for API operations, and utilities for working with GraphQL in Skiff applications.
+
+**Package**: `skiff-graphql`  
+**Source**: `libs/skiff-graphql/`
+
+## Key Features
+
+- Auto-generated TypeScript types from GraphQL schema
+- Comprehensive error classes for API operations
+- Type-safe GraphQL operations
+- Shared between frontend and backend
+- Subscription and plan utilities
+
+## Code Generation
+
+The library uses GraphQL Code Generator to produce TypeScript types from the schema.
+
+### Configuration
+
+Located in `libs/skiff-graphql/codegen.yml`:
+
+```yaml
+overwrite: true
+schema:
+  - ../../supergraph.graphql
+  - ./src/editorLocalState.graphql
+  - ./src/skemailLocalState.graphql
+generates:
+  src/types.ts:
+    plugins:
+      - 'typescript'
+    config:
+      scalars:
+        Date: 'Date'
+        JSON: 'Record<any, any>'
+        PublicKey: '{ key: string, signature?: string }'
+```
+
+Source: `libs/skiff-graphql/codegen.yml:1`
+
+### Build Process
+
+```bash
+# Generate types from schema
+yarn graphql-codegen --config codegen.yml
+
+# Build the library
+yarn build
+
+# Watch for schema changes
+yarn watch
+```
+
+## Generated Types
+
+All GraphQL types are auto-generated in `libs/skiff-graphql/src/types.ts`.
+
+### Using Generated Types
+
+```typescript
+import { 
+  User,
+  Document,
+  PermissionLevel,
+  AttendeeStatus,
+  EventReminder,
+  SubscriptionPlan
+} from 'skiff-graphql';
+
+// Use generated types in your code
+function updateUser(user: User) {
+  // TypeScript knows all User fields
+  console.log(user.username, user.publicKey);
+}
+
+// Enums are also generated
+const permission: PermissionLevel = PermissionLevel.Editor;
+```
+
+Source: `libs/skiff-graphql/src/types.ts:1`
+
+### Custom Scalar Types
+
+```typescript
+import type { 
+  PublicKey,
+  PublicKeyWithSignature,
+  SocketEvent 
+} from 'skiff-graphql';
+
+// PublicKey: { key: string, signature?: string }
+const pubKey: PublicKey = {
+  key: 'base64-encoded-key',
+  signature: 'optional-signature'
+};
+
+// PublicKeyWithSignature: { key: string, signature: string }
+const signedKey: PublicKeyWithSignature = {
+  key: 'base64-encoded-key',
+  signature: 'required-signature'
+};
+```
+
+Source: `libs/skiff-graphql/codegen.yml:10`
+
+## Error Classes
+
+Located in `libs/skiff-graphql/src/errors.ts`
+
+Comprehensive error classes extending `ApolloError` for type-safe error handling.
+
+### Common Errors
+
+```typescript
+import { 
+  NotFound,
+  NotAuthorized,
+  BadRequest,
+  RateLimitError,
+  DocumentDoesNotExist,
+  UserDoesNotExist
+} from 'skiff-graphql';
+
+// Throw typed errors
+throw new NotFound('User not found');
+throw new NotAuthorized('Insufficient permissions');
+throw new BadRequest('Invalid input');
+
+// Error with extensions
+throw new RateLimitError('Too many requests', {
+  msBeforeNext: 5000,
+  throttled: true
+});
+```
+
+Source: `libs/skiff-graphql/src/errors.ts:1`
+
+### Error Assertions
+
+Errors provide assertion methods for cleaner error handling.
+
+```typescript
+import { NotFound, NotAuthorized } from 'skiff-graphql';
+
+// Assert condition is true
+NotFound.assert(user !== null, 'User not found');
+// Throws NotFound error if user is null
+
+// Assert value exists
+NotAuthorized.assertExists(permissions, 'No permissions found');
+// Throws NotAuthorized if permissions is null/undefined
+
+function getDocument(docID: string | null) {
+  // Assert and narrow type
+  NotFound.assertExists(docID, 'Document ID required');
+  // TypeScript now knows docID is string (not null)
+  return fetchDocument(docID);
+}
+```
+
+Source: `libs/skiff-graphql/src/errors.ts:26`
+
+### Document Errors
+
+```typescript
+import {
+  DocumentDoesNotExist,
+  DocumentContentConflict,
+  DocumentTooLarge,
+  DocumentHierarchyConflict,
+  NeedNewSessionKey,
+  InvalidSignature
+} from 'skiff-graphql';
+
+// Document-specific errors
+throw new DocumentDoesNotExist('Document not found');
+throw new DocumentTooLarge('Document exceeds size limit');
+
+// Document conflicts
+throw new DocumentContentConflict('Content has been modified');
+throw new DocumentHierarchyConflict('Invalid document hierarchy');
+
+// Encryption errors with context
+throw new NeedNewSessionKey('Session key rotation required', {
+  docID: 'doc-123'
+});
+
+throw new InvalidSignature('Signature verification failed');
+```
+
+Source: `libs/skiff-graphql/src/errors.ts:39`
+
+### Authentication Errors
+
+```typescript
+import {
+  AuthenticationError,
+  NotAuthorized,
+  UserDoesNotExist
+} from 'skiff-graphql';
+
+throw new AuthenticationError('Invalid credentials');
+throw new NotAuthorized('Editor permission required');
+throw new UserDoesNotExist('User account not found');
+```
+
+Source: `libs/skiff-graphql/src/errors.ts:48`
+
+### Rate Limiting
+
+```typescript
+import { RateLimitError } from 'skiff-graphql';
+
+// Rate limit with retry information
+throw new RateLimitError('Rate limit exceeded', {
+  msBeforeNext: 30000,  // Wait 30 seconds
+  throttled: true
+});
+
+// Handle rate limit errors
+try {
+  await apiCall();
+} catch (error) {
+  if (error.extensions?.code === RateLimitError.CODE) {
+    const waitTime = error.extensions.msBeforeNext;
+    console.log(`Retry after ${waitTime}ms`);
+  }
+}
+```
+
+Source: `libs/skiff-graphql/src/errors.ts:87`
+
+### Error Codes
+
+All errors have a static `CODE` property:
+
+```typescript
+import { NotFound, BadRequest } from 'skiff-graphql';
+
+// Access error codes
+NotFound.CODE;      // 'NOT_FOUND'
+BadRequest.CODE;    // 'BAD_REQUEST'
+
+// Use in error handling
+if (error.extensions?.code === NotFound.CODE) {
+  // Handle not found error
+}
+```
+
+Source: `libs/skiff-graphql/src/errors.ts:17`
+
+## Plan Utilities
+
+Located in `libs/skiff-graphql/src/planUtils.ts`
+
+```typescript
+import { 
+  isPaidTier,
+  isFreeTier,
+  getStorageLimitForTier 
+} from 'skiff-graphql';
+
+// Check subscription tier
+if (isPaidTier(user.subscriptionPlan)) {
+  // Enable premium features
+}
+
+// Get storage limits
+const limit = getStorageLimitForTier(user.subscriptionPlan);
+```
+
+Source: `libs/skiff-graphql/src/planUtils.ts:1`
+
+## Error Utilities
+
+Located in `libs/skiff-graphql/src/errorsUtils.ts`
+
+```typescript
+import { isApolloError, getErrorCode } from 'skiff-graphql';
+
+// Check if error is Apollo error
+if (isApolloError(error)) {
+  const code = getErrorCode(error);
+  console.log('Error code:', code);
+}
+```
+
+Source: `libs/skiff-graphql/src/errorsUtils.ts:1`
+
+## Local State Schemas
+
+The library includes GraphQL schemas for client-side state management.
+
+### Editor Local State
+
+```graphql
+# libs/skiff-graphql/src/editorLocalState.graphql
+extend type Query {
+  currentDocument: Document
+  editorSettings: EditorSettings
+}
+```
+
+Source: `libs/skiff-graphql/src/editorLocalState.graphql:1`
+
+### Skemail Local State
+
+```graphql
+# libs/skiff-graphql/src/skemailLocalState.graphql
+extend type Query {
+  currentThread: Thread
+  mailFilters: [MailFilter]
+}
+```
+
+Source: `libs/skiff-graphql/src/skemailLocalState.graphql:1`
+
+## Complete Schema
+
+The complete GraphQL schema is available at:
+
+```typescript
+import schema from 'skiff-graphql/src/completeSchema.graphql';
+```
+
+Source: `libs/skiff-graphql/src/completeSchema.graphql:1`
+
+## Usage Example
+
+```typescript
+import { 
+  User,
+  Document,
+  PermissionLevel,
+  NotFound,
+  NotAuthorized 
+} from 'skiff-graphql';
+
+interface ShareDocumentInput {
+  docID: string;
+  userEmail: string;
+  permission: PermissionLevel;
+}
+
+async function shareDocument(
+  input: ShareDocumentInput,
+  currentUser: User
+): Promise<Document> {
+  // Use assertion for validation
+  NotFound.assertExists(
+    input.docID,
+    'Document ID is required'
+  );
+
+  const doc = await fetchDocument(input.docID);
+  
+  NotFound.assertExists(
+    doc,
+    `Document ${input.docID} not found`
+  );
+
+  // Check permissions
+  NotAuthorized.assert(
+    doc.ownerID === currentUser.userID,
+    'Only document owner can share'
+  );
+
+  // Share document with specified permission
+  return await addDocumentPermission(
+    doc,
+    input.userEmail,
+    input.permission
+  );
+}
+```
+
+## Installation
+
+This is a workspace package:
+
+```json
+{
+  "dependencies": {
+    "skiff-graphql": "workspace:libs/skiff-graphql"
+  }
+}
+```
+
+## Key Dependencies
+
+- **graphql**: GraphQL implementation
+- **@apollo/client**: Apollo Client
+- **@graphql-codegen/cli**: Code generation
+- **@graphql-codegen/typescript**: TypeScript plugin
+- **apollo-server-errors**: Error classes
+- **skiff-utils**: Shared utilities
+
+## Frontend Companion
+
+For frontend-specific GraphQL hooks and operations, see:
+
+- [skiff-front-graphql](/libraries/skiff-graphql) - React hooks and mutations
+
+## Related Libraries
+
+- [skiff-utils](/libraries/skiff-utils) - Shared utilities
+- [skiff-front-utils](/libraries/skiff-front-utils) - Frontend utilities

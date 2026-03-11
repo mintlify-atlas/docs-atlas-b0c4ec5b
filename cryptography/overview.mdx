@@ -1,0 +1,176 @@
+---
+title: Cryptography Overview
+description: Overview of Skiff's end-to-end encryption architecture and cryptographic approach
+icon: shield-check
+---
+
+# Cryptography Overview
+
+Skiff's cryptography library (`skiff-crypto`) is a versatile, open-source JavaScript cryptography library designed to provide strong and efficient cryptographic functions for use in NodeJS or in the browser. This package powers cryptography inside Skiff's end-to-end encrypted, privacy-first product suite, including Mail, Pages, Drive, and Calendar applications.
+
+## Core Features
+
+The skiff-crypto library brings together a host of cryptographic functionalities:
+
+- **Symmetric Key Cryptography**: ChaCha20Poly1305-based symmetric encryption functions
+- **Asymmetric Key Cryptography**: TweetNaCl-based asymmetric encryption
+- **Datagram Library**: Manage object versions and metadata in an efficient way
+- **Integrity**: Support for checksum and data integrity verification
+- **Utilities**: A collection of useful utilities for working with cryptographic data, such as utf8 and string conversion
+
+## Cryptographic Libraries
+
+Skiff's encryption relies on two primary cryptographic libraries:
+
+### ChaCha20Poly1305
+
+Used for symmetric encryption, ChaCha20Poly1305 is an Authenticated Encryption with Additional Data (AEAD) cipher. This modern cipher provides:
+
+- **High performance** on platforms without AES hardware acceleration
+- **Authentication** alongside encryption, ensuring data integrity
+- **Security** with resistance to timing attacks
+
+The implementation uses `@stablelib/chacha20poly1305` and is wrapped in the `TaggedSecretBox` class, which additionally includes version and type information in the Additional Authenticated Data (AAD) headers.
+
+```typescript
+import { ChaCha20Poly1305, NONCE_LENGTH } from '@stablelib/chacha20poly1305';
+```
+
+Reference: `libs/skiff-crypto/src/aead/secretbox.ts:2`
+
+### TweetNaCl
+
+For asymmetric encryption, Skiff uses TweetNaCl (also known as NaCl), a compact, audited cryptography library. TweetNaCl provides:
+
+- **Public-key encryption** using the Curve25519 elliptic curve
+- **Digital signatures** using Ed25519
+- **Key exchange** for establishing shared secrets
+
+The library implements the `nacl.box` construction for asymmetric encryption and `nacl.sign` for digital signatures.
+
+```typescript
+import nacl from 'tweetnacl';
+```
+
+Reference: `libs/skiff-crypto/src/asymmetricEncryption.ts:4`
+
+## Symmetric vs Asymmetric Encryption
+
+### Symmetric Encryption
+
+Symmetric encryption uses the same key for both encryption and decryption. In Skiff:
+
+- Used for encrypting large amounts of data efficiently
+- Keys are 32 bytes (256 bits) generated using `nacl.randomBytes()`
+- Perfect for encrypting document content, email bodies, and file data
+- Requires secure key distribution between parties
+
+**Use cases**: Document encryption, bulk data encryption, database field encryption
+
+### Asymmetric Encryption
+
+Asymmetric encryption uses a public/private key pair. In Skiff:
+
+- Public keys can be shared openly and are used for encryption
+- Private keys must be kept secret and are used for decryption
+- Used for key exchange and encrypting symmetric keys
+- Computationally more expensive than symmetric encryption
+
+**Use cases**: Sharing symmetric keys, encrypting metadata, user-to-user secure communication
+
+### Hybrid Approach
+
+Skiff employs a hybrid encryption strategy that combines both methods:
+
+1. Generate a symmetric key for encrypting the actual data
+2. Encrypt the data with the symmetric key (fast and efficient)
+3. Encrypt the symmetric key with the recipient's public key (secure distribution)
+4. Store both the encrypted data and encrypted symmetric key
+
+This approach provides the performance benefits of symmetric encryption with the key distribution advantages of asymmetric encryption.
+
+## Datagram System
+
+Skiff uses a sophisticated datagram system for versioning and managing encrypted data. A datagram encapsulates:
+
+- **Type**: Identifies the kind of data being encrypted (e.g., `ddl://test`)
+- **Version**: Tracks the data format version (e.g., `0.1.0`)
+- **Version Constraint**: Defines compatible versions using semantic versioning
+- **Serialization**: Converts data to/from bytes for encryption
+
+### Datagram Types
+
+Skiff provides several datagram builders:
+
+```typescript
+// JSON wrapper datagram (legacy)
+const TestDatagram = createJSONWrapperDatagram('ddl://test');
+
+// Raw JSON datagram (recommended)
+const RawDatagram = createRawJSONDatagram('ddl://data', '0.1.0', new Range('0.1.*'));
+
+// Compressed JSON datagram (for large data)
+const CompressedDatagram = createRawCompressedJSONDatagram('ddl://compressed', '0.1.0');
+
+// Raw Uint8Array datagram (optimal for binary data)
+const BinaryDatagram = createUint8ArrayDatagram('ddl://binary', '0.1.0');
+```
+
+Reference: `libs/skiff-crypto/src/datagramBuilders.ts`
+
+The datagram system ensures:
+- **Forward compatibility**: New versions can read old data formats
+- **Type safety**: Runtime type checking prevents decryption errors
+- **Efficient serialization**: Optimized encoding for different data types
+
+## Additional Authenticated Data (AAD)
+
+The TaggedSecretBox implementation includes metadata in the AAD headers:
+
+```typescript
+const aad: AADMeta = new AADMeta(datagram.version, datagram.type, nonce);
+```
+
+Reference: `libs/skiff-crypto/src/aead/secretbox.ts:20`
+
+This metadata:
+- Prevents type confusion attacks
+- Enables version verification during decryption
+- Includes the nonce for proper AEAD operation
+- Is authenticated but not encrypted
+
+## Security Considerations
+
+Cryptography is a sensitive domain. While skiff-crypto has been audited and built using widely-used, audited libraries:
+
+- Have a sound understanding of cryptographic principles before implementation
+- All cryptographic operations use secure random number generation
+- Keys are generated using cryptographically secure sources
+- Nonces are never reused within the same key context
+- Security issues should be reported to security@skiff.org
+
+## Installation
+
+```bash
+npm install @skiff-org/skiff-crypto
+```
+
+Or using Yarn:
+
+```bash
+yarn add @skiff-org/skiff-crypto
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Encryption" icon="lock" href="/cryptography/encryption">
+    Learn about symmetric and asymmetric encryption methods
+  </Card>
+  <Card title="Key Management" icon="key" href="/cryptography/key-management">
+    Understand key generation and storage approaches
+  </Card>
+  <Card title="Private Search" icon="magnifying-glass" href="/cryptography/private-search">
+    Explore client-side encrypted search indexing
+  </Card>
+</CardGroup>

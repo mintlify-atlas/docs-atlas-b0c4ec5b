@@ -1,0 +1,418 @@
+---
+title: 'Skiff Calendar'
+description: 'End-to-end encrypted calendar with intelligent scheduling'
+icon: 'calendar'
+---
+
+Skiff Calendar is a privacy-first, end-to-end encrypted calendar application that keeps your schedule completely private. All event details including titles, descriptions, locations, and attendees are fully encrypted.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Encrypted Events" icon="shield-halved">
+    Every event detail is end-to-end encrypted, including titles, times, locations, and participant information.
+  </Card>
+  <Card title="Recurring Events" icon="arrows-rotate">
+    Create sophisticated recurring event patterns with full encryption support.
+  </Card>
+  <Card title="Calendar Import" icon="file-import">
+    Import calendars from Google Calendar, iCal, and other providers using ICS format.
+  </Card>
+  <Card title="Multi-Calendar Views" icon="calendar-days">
+    View your schedule by day, week, month, or year with customizable layouts.
+  </Card>
+</CardGroup>
+
+## Event Creation and Management
+
+### Creating Events
+
+Skiff Calendar provides a rich event creation interface:
+
+- **Quick Add**: Click any time slot to quickly create an event
+- **Detailed Editor**: Full event editor with all fields
+- **Recurring Events**: Set up daily, weekly, monthly, or custom patterns
+- **All-Day Events**: Create events that span entire days
+- **Time Zones**: Multi-timezone support for global scheduling
+- **Reminders**: Set custom notification reminders
+
+### Event Properties
+
+Each event supports comprehensive metadata:
+
+```typescript
+// Event fields (all encrypted)
+{
+  title: string;
+  description: string;
+  location: string;
+  startTime: Date;
+  endTime: Date;
+  isAllDay: boolean;
+  recurrenceRule?: RecurrenceRule;
+  attendees: Attendee[];
+  reminders: Reminder[];
+  color: string;
+  calendar: string;
+}
+```
+
+### Recurring Events
+
+Create complex recurring patterns:
+
+- **Daily**: Every day or every N days
+- **Weekly**: Specific days of the week
+- **Monthly**: By day of month or nth weekday
+- **Yearly**: Annual events
+- **Custom**: RRULE-based custom patterns
+- **Exceptions**: Skip specific occurrences
+- **Until Date**: Set end date for recurrence
+
+<img src="/images/placeholder-calendar-view.png" alt="Calendar month view" />
+
+## Calendar Views
+
+### Available Views
+
+<Accordion title="Day View">
+  See hourly breakdown of a single day:
+  
+  - Hourly time slots from morning to evening
+  - Overlapping event visualization
+  - All-day event section at top
+  - Quick navigation to previous/next day
+</Accordion>
+
+<Accordion title="Week View">
+  View an entire week at a glance:
+  
+  - 7-day grid with hourly slots
+  - Multi-day event spanning
+  - Color-coded calendars
+  - Weekend highlighting
+</Accordion>
+
+<Accordion title="Month View">
+  Overview of the entire month:
+  
+  - Calendar grid with date boxes
+  - Event dots for each day
+  - Overflow indicators for busy days
+  - Quick event preview on hover
+</Accordion>
+
+<Accordion title="Year View">
+  Annual overview:
+  
+  - 12-month grid layout
+  - Event density visualization
+  - Quick navigation to any month
+  - Holiday and special date highlighting
+</Accordion>
+
+## Encryption Architecture
+
+### Event Encryption
+
+Skiff Calendar uses protocol buffers for structured event encryption:
+
+- **Title Encryption**: Event titles are encrypted as separate fields
+- **Description Encryption**: Rich text descriptions fully encrypted
+- **Metadata Protection**: Location, attendees, and notes are encrypted
+- **Recurrence Rules**: RRULE patterns are encrypted client-side
+
+### Decryption Models
+
+The calendar uses decrypted models for local operations:
+
+```typescript
+// Source: calendar-web/src/storage/models/event/
+DecryptedEventModel {
+  // Encrypted data is decrypted and cached locally
+  // using IndexedDB with Dexie
+  decrypt(privateKey: PrivateKey): Event;
+  encrypt(publicKey: PublicKey): EncryptedEvent;
+}
+```
+
+### Client-Side Storage
+
+Calendar data is stored locally using encrypted IndexedDB:
+
+- **Dexie**: IndexedDB wrapper for structured storage
+- **Local Caching**: Events cached for offline access
+- **Background Sync**: Automatic synchronization when online
+- **Crypto Workers**: Web Workers for encryption operations
+
+## ICS Import and Export
+
+Skiff Calendar uses the `skiff-ics` library for calendar data interchange.
+
+### Import Capabilities
+
+<Steps>
+  <Step title="Select ICS File">
+    Choose an .ics file from Google Calendar, Apple Calendar, Outlook, or other providers
+  </Step>
+  <Step title="Parse Events">
+    The skiff-ics library parses the ICS format and extracts all events
+  </Step>
+  <Step title="Encrypt Events">
+    Each imported event is encrypted with your keys before storage
+  </Step>
+  <Step title="Sync to Server">
+    Encrypted events are uploaded to Skiff servers
+  </Step>
+</Steps>
+
+### Export Functionality
+
+- **Single Event Export**: Download individual events as .ics files
+- **Calendar Export**: Export entire calendars
+- **Standard Format**: Compatible with all ICS-supporting applications
+- **Attendee Information**: Includes encrypted attendee data
+
+### ICS Library Features
+
+The `skiff-ics` library provides:
+
+```typescript
+// Package: libs/skiff-ics
+import { parseICS, generateICS } from 'skiff-ics';
+
+// Parse ICS file to events
+const events = parseICS(icsFileContent);
+
+// Generate ICS from events
+const icsOutput = generateICS(events, calendarMetadata);
+```
+
+**Supported ICS Features:**
+- Event parsing and generation
+- Recurring events (RRULE)
+- Time zone handling (using `windows-iana` and `@vvo/tzdb`)
+- Attendee and organizer information
+- Reminders and alarms
+- Event exceptions (EXDATE)
+
+## Google Calendar Integration
+
+Skiff Calendar supports importing from Google Calendar:
+
+### Import Process
+
+1. **OAuth Authentication**: Secure Google account connection
+2. **Calendar Selection**: Choose which calendars to import
+3. **Event Fetching**: Download all events via Google Calendar API
+4. **Local Encryption**: Events are encrypted before storage
+5. **Continuous Sync**: Optional ongoing synchronization
+
+### Technical Implementation
+
+```typescript
+// Dependencies used for Google Calendar import
+import { gapi } from 'gapi-script';
+import { googleapis } from 'googleapis';
+
+// Type definitions
+@types/gapi
+@types/gapi.auth2
+@types/gapi.client.calendar
+```
+
+## Scheduling Features
+
+### Event Invitations
+
+- Send encrypted calendar invitations to Skiff users
+- Email-based invitations for external users
+- RSVP tracking (Accept, Decline, Maybe)
+- Attendee response notifications
+- Organizer controls for event updates
+
+### Participant Management
+
+- Add multiple attendees to events
+- Participant suggestion based on frequent contacts
+- Encrypted attendee lists
+- Required vs. optional attendees
+- Response status tracking
+
+### Reminders and Notifications
+
+- Custom reminder times (5 min, 15 min, 1 hour, 1 day, etc.)
+- Multiple reminders per event
+- Browser notifications
+- Email reminders for important events
+- Smart reminder suggestions
+
+<img src="/images/placeholder-event-details.png" alt="Event details modal" />
+
+## Multi-Calendar Support
+
+### Calendar Organization
+
+- Create multiple calendars for different purposes
+- Color-code each calendar for visual distinction
+- Toggle calendar visibility in views
+- Share calendars with other Skiff users
+- Subscribe to public calendars
+
+### Calendar Settings
+
+Per-calendar customization:
+
+- **Name and Description**: Identify your calendars
+- **Color Theme**: Choose from preset colors
+- **Default View**: Set preferred view per calendar
+- **Notifications**: Calendar-specific reminder settings
+- **Sharing**: Control access permissions
+
+## Time Zone Support
+
+Comprehensive time zone handling:
+
+- Automatic time zone detection
+- Manual time zone selection
+- Per-event time zone settings
+- DST-aware calculations
+- Time zone database from `@vvo/tzdb`
+- Display events in local or original time zone
+
+## Mobile Experience
+
+Skiff Calendar is optimized for mobile devices:
+
+- **Responsive Design**: Adapts to all screen sizes
+- **Touch Gestures**: Swipe between days, weeks, months
+- **Mobile Event Creation**: Simplified quick-add interface
+- **Offline Support**: View and create events without connection
+- **Native Apps**: iOS and Android applications
+
+## Privacy and Security
+
+### Zero-Knowledge Architecture
+
+- All event data is encrypted client-side
+- Servers never see plaintext event information
+- Private keys never leave user devices
+- Metadata minimization for maximum privacy
+
+### Cryptographic Implementation
+
+Skiff Calendar uses multiple crypto libraries:
+
+- `skiff-crypto`: Core encryption functions
+- `skiff-crypto-v2`: Modern crypto primitives
+- `@stablelib/base64`: Base64 encoding for encrypted data
+- Protocol Buffers: Structured data serialization
+
+## Technical Architecture
+
+### Source Code Structure
+
+```
+calendar-web/src/
+├── components/
+│   ├── Calendar/         # Main calendar grid views
+│   ├── CalendarHeader/   # Navigation and view controls
+│   ├── CalendarSidebar/  # Mini calendar and calendar list
+│   ├── EventInfo/        # Event detail display
+│   ├── modals/          # Event creation and editing
+│   └── CalendarSettings/ # User preferences
+├── crypto/              # Encryption/decryption logic
+│   └── cryptoWebWorker/ # Worker threads for crypto
+├── storage/             # IndexedDB and local caching
+│   └── models/          # Decrypted data models
+└── redux/               # State management
+```
+
+### Local Storage with Dexie
+
+```typescript
+// IndexedDB schema using Dexie
+import Dexie from 'dexie';
+
+class CalendarDatabase extends Dexie {
+  events: Dexie.Table<DecryptedEvent, string>;
+  calendars: Dexie.Table<Calendar, string>;
+  drafts: Dexie.Table<DecryptedDraft, string>;
+  
+  constructor() {
+    super('SkiffCalendar');
+    this.version(1).stores({
+      events: 'id, calendarID, startTime, endTime',
+      calendars: 'id, name',
+      drafts: 'id, lastModified'
+    });
+  }
+}
+```
+
+### GraphQL Operations
+
+Calendar mutations and queries:
+
+- `createEvent`: Create new encrypted event
+- `updateEvent`: Modify existing event
+- `deleteEvent`: Remove event from calendar
+- `getEvents`: Fetch events for date range
+- `importCalendar`: Import ICS calendar
+- `shareCalendar`: Share calendar with users
+
+## Advanced Features
+
+<Accordion title="Draft Events">
+  Save incomplete events as drafts:
+  
+  - Auto-save while editing
+  - Restore drafts after closing
+  - Multiple concurrent drafts
+  - Draft synchronization across devices
+  
+  Implemented in `storage/models/draft/DecryptedDraftModel.ts`
+</Accordion>
+
+<Accordion title="Recurring Event Editing">
+  Flexible editing of recurring events:
+  
+  - Edit single occurrence
+  - Edit this and future occurrences
+  - Edit all occurrences
+  - Delete with same options
+  - Exception handling for modified instances
+</Accordion>
+
+<Accordion title="Calendar Sharing">
+  Share calendars with other users:
+  
+  - View-only or edit permissions
+  - Encrypted sharing with other Skiff users
+  - Revoke access at any time
+  - Shared calendar indicators
+</Accordion>
+
+## Getting Started
+
+<Steps>
+  <Step title="Access Skiff Calendar">
+    Sign in to your Skiff account and navigate to Calendar
+  </Step>
+  <Step title="Create Your First Event">
+    Click any time slot or use the "New Event" button
+  </Step>
+  <Step title="Import Existing Calendar">
+    Import your Google Calendar or .ics file to migrate existing events
+  </Step>
+  <Step title="Customize Your View">
+    Choose your preferred view and create additional calendars
+  </Step>
+</Steps>
+
+## Learn More
+
+- [Skiff Security Model](https://skiff.com/security-model)
+- [ICS Library Source](https://github.com/skiff-org/skiff-apps/tree/main/libs/skiff-ics)
+- [Calendar Source Code](https://github.com/skiff-org/skiff-apps/tree/main/calendar-web)
+- [Join Discord Community](https://discord.com/invite/skiff)

@@ -1,0 +1,240 @@
+---
+title: Local Development
+description: Complete guide to developing Skiff applications locally
+---
+
+This guide covers the complete local development workflow for Skiff applications.
+
+## Monorepo Structure
+
+Skiff uses a Yarn workspaces monorepo structure with multiple applications and shared libraries:
+
+```bash
+skiff-apps/
+├── skemail-web/          # Skiff Mail application
+├── calendar-web/         # Skiff Calendar application
+├── skiff-pages-drive/    # Skiff Pages & Drive application
+├── libs/                 # Shared libraries
+└── package.json          # Root workspace configuration
+```
+
+## Environment Setup
+
+### Install Dependencies
+
+After cloning the repository, install dependencies for all workspaces:
+
+```bash
+yarn
+```
+
+### Build Shared Libraries
+
+Before running any application, build the shared libraries:
+
+```bash
+yarn build:lib
+```
+
+This command builds the `libs` workspace, which includes all shared libraries that the applications depend on.
+
+## Development Workflow
+
+### Skiff Mail Development
+
+<AccordionGroup>
+  <Accordion title="Available Scripts">
+    The following scripts are available in `skemail-web/package.json`:
+
+    - `yarn dev` - Start development server
+    - `yarn build` - Build production bundle
+    - `yarn test` - Run tests
+    - `yarn lint` - Lint code
+    - `yarn lint:fix` - Fix linting issues
+    - `yarn ts` - Type check TypeScript
+    - `yarn codegen` - Generate GraphQL types
+  </Accordion>
+
+  <Accordion title="Running the Development Server">
+    To start the Skiff Mail development server:
+
+    <CodeGroup>
+    ```bash From root directory
+    yarn dev
+    ```
+
+    ```bash From skemail-web directory
+    cd skemail-web
+    yarn dev
+    ```
+    </CodeGroup>
+
+    The application will be available at http://localhost:4200/mail/inbox
+  </Accordion>
+
+  <Accordion title="Building for Production">
+    To create a production build:
+
+    ```bash
+    cd skemail-web
+    yarn build
+    ```
+
+    This runs the following steps:
+    1. Cleans previous builds (`build:clean`)
+    2. Builds the main application (`build-main`)
+    3. Packages the push service worker (`package-push-sw`)
+  </Accordion>
+
+  <Accordion title="Testing">
+    Run the test suite:
+
+    ```bash
+    cd skemail-web
+    yarn test
+    ```
+
+    For watch mode:
+
+    ```bash
+    yarn test-watch
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Skiff Calendar Development
+
+<AccordionGroup>
+  <Accordion title="Available Scripts">
+    The following scripts are available in `calendar-web/package.json`:
+
+    - `yarn dev` - Start development server
+    - `yarn build` - Build production bundle
+    - `yarn test` - Run tests
+    - `yarn lint` - Lint code
+    - `yarn lint:fix` - Fix linting issues
+    - `yarn ts` - Type check TypeScript
+    - `yarn codegen` - Generate GraphQL types
+    - `yarn protogen` - Generate Protocol Buffer types
+  </Accordion>
+
+  <Accordion title="Running the Development Server">
+    To start the Skiff Calendar development server:
+
+    ```bash
+    cd calendar-web
+    yarn dev
+    ```
+  </Accordion>
+
+  <Accordion title="Building for Production">
+    To create a production build:
+
+    ```bash
+    cd calendar-web
+    yarn build
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Code Quality
+
+### Linting
+
+Run ESLint to check for code quality issues:
+
+```bash
+yarn lint
+```
+
+Automatically fix linting issues:
+
+```bash
+yarn lint:fix
+```
+
+Check for circular dependencies:
+
+```bash
+cd skemail-web
+yarn lint:cycles
+```
+
+### Type Checking
+
+Run TypeScript type checking without emitting files:
+
+```bash
+cd skemail-web
+yarn ts
+```
+
+## GraphQL Code Generation
+
+Skiff uses GraphQL Code Generator to create TypeScript types from GraphQL schemas and operations.
+
+Generate GraphQL types:
+
+```bash
+cd skemail-web
+yarn codegen
+```
+
+This reads the configuration from `codegen.yml` and generates type-safe GraphQL hooks and types.
+
+## Working with Libraries
+
+When making changes to shared libraries in the `libs/` directory, you need to rebuild them:
+
+```bash
+yarn build:lib
+```
+
+The build script builds libraries in dependency order to ensure proper linking.
+
+## Tips for Development
+
+<CardGroup cols={2}>
+  <Card title="Hot Reload" icon="fire">
+    The development server supports hot module replacement, so most changes will be reflected immediately without a full reload.
+  </Card>
+
+  <Card title="Mock Data" icon="database">
+    The local development environment uses mock data. API access may be added in the future.
+  </Card>
+
+  <Card title="Workspaces" icon="folder-tree">
+    Yarn workspaces automatically link dependencies between packages. Changes to libraries are immediately available to applications.
+  </Card>
+
+  <Card title="Parallel Testing" icon="bolt">
+    Tests run with limited parallelism (`--maxWorkers=2`) to optimize memory usage.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Clean Build
+
+If you encounter build issues, try cleaning the build artifacts:
+
+```bash
+# Clean skemail-web build
+cd skemail-web
+yarn build:clean
+
+# Clean webpack cache
+yarn webpack:clean
+```
+
+### Rebuild Everything
+
+For persistent issues, rebuild from scratch:
+
+```bash
+# From root directory
+rm -rf node_modules
+rm -rf .yarn/.cache
+yarn
+yarn build:lib
+```

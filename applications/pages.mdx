@@ -1,0 +1,474 @@
+---
+title: 'Skiff Pages'
+description: 'Collaborative, encrypted document editor with rich formatting'
+icon: 'file-lines'
+---
+
+Skiff Pages is an end-to-end encrypted document editor that provides powerful rich text editing capabilities while maintaining complete privacy. All document content, including text, formatting, images, and metadata, is fully encrypted.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Rich Text Editing" icon="pen-fancy">
+    Full-featured document editor with text formatting, tables, images, code blocks, and more.
+  </Card>
+  <Card title="Real-Time Collaboration" icon="users">
+    Collaborate on documents with other users while maintaining end-to-end encryption.
+  </Card>
+  <Card title="ProseMirror Engine" icon="code">
+    Built on ProseMirror and Tiptap for extensible, robust document editing.
+  </Card>
+  <Card title="Document Encryption" icon="lock">
+    Every document is encrypted client-side before being stored on servers.
+  </Card>
+</CardGroup>
+
+## Editor Features
+
+Skiff Pages is built on the `skiff-prosemirror` library, which provides a comprehensive set of editing capabilities.
+
+### Text Formatting
+
+<Accordion title="Basic Formatting">
+  Standard text styling options:
+  
+  - **Bold** (⌘B / Ctrl+B)
+  - *Italic* (⌘I / Ctrl+I)
+  - <u>Underline</u> (⌘U / Ctrl+U)
+  - ~~Strikethrough~~
+  - `Code` (inline code formatting)
+  - Text color and highlighting
+  - Font size adjustment
+  - Font family selection
+</Accordion>
+
+<Accordion title="Paragraph Formatting">
+  Structure your documents:
+  
+  - Headings (H1, H2, H3, H4, H5, H6)
+  - Paragraphs with spacing control
+  - Blockquotes for citations
+  - Code blocks with syntax highlighting
+  - Horizontal rules (dividers)
+  - Text alignment (left, center, right, justify)
+</Accordion>
+
+<Accordion title="Lists">
+  Multiple list types:
+  
+  - Bullet lists (unordered)
+  - Numbered lists (ordered)
+  - Task lists with checkboxes
+  - Nested lists with indentation
+  - Toggle lists for collapsible sections
+</Accordion>
+
+### Advanced Content
+
+#### Tables
+
+Create and edit sophisticated tables:
+
+- Insert tables with custom rows and columns
+- Merge and split cells
+- Table headers with distinct styling
+- Row and column operations (insert, delete, move)
+- Cell background colors
+- Resize columns and rows
+- Table borders and styling
+
+```typescript
+// Table implementation in skiff-prosemirror
+import { TableNodeSpec } from 'skiff-prosemirror';
+import { tableEditing, columnResizing } from '@skiff-org/prosemirror-tables';
+
+// Supported table operations:
+- addColumnBefore / addColumnAfter
+- addRowBefore / addRowAfter
+- deleteColumn / deleteRow
+- mergeCells / splitCell
+- setCellBackgroundColor
+```
+
+#### Images
+
+Insert and manage images in documents:
+
+- Upload images from local files
+- Drag and drop image insertion
+- Resize images within documents
+- Image alignment options
+- Alt text for accessibility
+- Encrypted image storage
+
+#### Links
+
+Hyperlink management:
+
+- Insert links to external URLs
+- Link to other Skiff documents
+- Edit link URLs and display text
+- Remove links
+- Link tooltip preview
+- Automatic link sanitization for security
+
+#### Math and Special Content
+
+- Mathematical equations (LaTeX support)
+- File embeds from Skiff Drive
+- Bookmarks for internal references
+- Mentions for user collaboration
+- Placeholders for dynamic content
+
+<img src="/images/placeholder-pages-editor.png" alt="Skiff Pages editor interface" />
+
+## ProseMirror Architecture
+
+Skiff Pages is built on the powerful ProseMirror editing framework.
+
+### Core Libraries
+
+```typescript
+// ProseMirror core packages
+import { EditorState } from 'prosemirror-state';
+import { EditorView } from 'prosemirror-view';
+import { Schema, Node } from 'prosemirror-model';
+import { Transform } from 'prosemirror-transform';
+import { Plugin } from 'prosemirror-state';
+```
+
+### Skiff ProseMirror Extensions
+
+The `skiff-prosemirror` library extends ProseMirror with custom nodes and marks:
+
+**Node Types:**
+- `DocNodeSpec`: Root document node
+- `ParagraphNodeSpec`: Standard paragraphs
+- `HeadingNodeSpec`: H1-H6 headings
+- `BlockquoteNodeSpec`: Quote blocks
+- `CodeBlockNodeSpec`: Code with syntax highlighting
+- `BulletListNodeSpec` / `OrderedListNodeSpec`: Lists
+- `ListItemNodeSpec`: List items
+- `TaskItemNodeSpec`: Checkbox items
+- `TodoListNodeSpec`: Task lists
+- `TableNodesSpecs`: Table, row, cell, header
+- `ImageNodeSpec`: Inline and block images
+- `HorizontalRuleNodeSpec`: Dividers
+- `MathNodeSpecs`: Mathematical equations
+- `FileEmbedNodeSpec`: Drive file embeds
+- `MentionNodeSpec`: User mentions
+
+**Mark Types:**
+- `StrongMarkSpec`: Bold text
+- `EMMarkSpec`: Italic text
+- `TextUnderlineMarkSpec`: Underline
+- `StrikeMarkSpec`: Strikethrough
+- `CodeMarkSpec`: Inline code
+- `LinkMarkSpec`: Hyperlinks
+- `TextColorMarkSpec`: Text color
+- `TextHighlightMarkSpec`: Background highlighting
+- `FontSizeMarkSpec`: Font size
+- `FontTypeMarkSpec`: Font family
+- `TextSelectionMarkSpec`: Selection highlights
+- `TextSuperMarkSpec`: Superscript
+- `SpacerMarkSpec`: Spacing control
+
+### Editor Plugins
+
+Skiff Pages uses numerous ProseMirror plugins:
+
+- `EditorPageLayoutPlugin`: Page layout and formatting
+- `ContentPlaceholderPlugin`: Show placeholder text
+- `CursorPlaceholderPlugin`: Cursor state management
+- `LinkTooltipPlugin`: Link preview tooltips
+- `SelectPlugin`: Advanced selection handling
+- `LocalstorageCleanerPlugin`: Clean up local storage
+- `TablePlugins`: Table editing capabilities
+
+### Input Rules
+
+Automatic formatting with markdown-like shortcuts:
+
+```typescript
+// Examples of input rules
+- Type "# " for Heading 1
+- Type "## " for Heading 2
+- Type "- " or "* " for bullet list
+- Type "1. " for numbered list
+- Type "[]" for task list
+- Type "---" for horizontal rule
+- Type "> " for blockquote
+```
+
+## Document Encryption
+
+### Encryption Flow
+
+All document content is encrypted before storage:
+
+1. **Edit Document**: User edits in ProseMirror editor
+2. **Serialize to JSON**: Document state serialized to JSON
+3. **Encrypt Content**: JSON encrypted with document key
+4. **Encrypt Metadata**: Title and other metadata encrypted separately
+5. **Store Encrypted**: Encrypted data uploaded to server
+6. **Decrypt on Load**: Document decrypted when opened
+
+### Encryption Libraries
+
+```typescript
+import { 
+  encryptSymmetric, 
+  decryptSymmetric,
+  generateSymmetricKey 
+} from 'skiff-crypto';
+
+// Document encryption datagram
+import { createJSONWrapperDatagram } from 'skiff-crypto';
+const DocumentDatagram = createJSONWrapperDatagram('ddl://skiff/document');
+```
+
+### Version History
+
+Encrypted version history for documents:
+
+- Every save creates a new encrypted version
+- Previous versions fully encrypted
+- Restore to any previous version
+- Compare versions side-by-side
+- Version history retention based on plan
+
+## Collaboration Features
+
+Skiff Pages supports real-time collaborative editing:
+
+### Real-Time Sync
+
+- **Operational Transformation**: Changes are synchronized using OT
+- **Conflict Resolution**: Automatic conflict resolution for concurrent edits
+- **Presence Indicators**: See other users' cursors and selections
+- **Comment System**: Add comments on document sections
+- **Change Tracking**: View who made which changes
+
+### Sharing and Permissions
+
+<Accordion title="Document Sharing">
+  Share documents securely:
+  
+  - **View Only**: Recipients can read but not edit
+  - **Can Edit**: Full editing permissions
+  - **Can Comment**: Add comments without editing
+  - **Expiring Links**: Set expiration for shared access
+  - **Password Protection**: Optional password for links
+</Accordion>
+
+<Accordion title="Team Collaboration">
+  Work together on documents:
+  
+  - Multiple simultaneous editors
+  - Real-time cursor positions
+  - Edit notifications
+  - Activity log
+  - Team workspace organization
+</Accordion>
+
+## Tiptap Integration
+
+Skiff Pages uses Tiptap extensions for enhanced editing:
+
+```typescript
+// Tiptap packages used
+import { Editor } from '@tiptap/core';
+import { Bold } from '@tiptap/extension-bold';
+import { Italic } from '@tiptap/extension-italic';
+import { Underline } from '@tiptap/extension-underline';
+import { Strike } from '@tiptap/extension-strike';
+import { Link } from '@tiptap/extension-link';
+import { Image } from '@tiptap/extension-image';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
+import { BulletList } from '@tiptap/extension-bullet-list';
+import { OrderedList } from '@tiptap/extension-ordered-list';
+import { ListItem } from '@tiptap/extension-list-item';
+import { Blockquote } from '@tiptap/extension-blockquote';
+import { Code } from '@tiptap/extension-code';
+import { Heading } from '@tiptap/extension-heading';
+import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
+import { HardBreak } from '@tiptap/extension-hard-break';
+import { Highlight } from '@tiptap/extension-highlight';
+import { Color } from '@tiptap/extension-color';
+import { TextAlign } from '@tiptap/extension-text-align';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Placeholder } from '@tiptap/extension-placeholder';
+import { History } from '@tiptap/extension-history';
+import { Dropcursor } from '@tiptap/extension-dropcursor';
+```
+
+## Import and Export
+
+### Supported Formats
+
+<CardGroup cols={2}>
+  <Card title="Import" icon="file-import">
+    - HTML files
+    - Markdown (.md)
+    - Plain text (.txt)
+    - Google Docs (via HTML export)
+  </Card>
+  <Card title="Export" icon="file-export">
+    - PDF (formatted)
+    - HTML (styled)
+    - Markdown
+    - Plain text
+  </Card>
+</CardGroup>
+
+### Google Docs Import
+
+```typescript
+// Import HTML from Google Docs
+import { convertFromHTML } from 'skiff-prosemirror';
+
+const doc = convertFromHTML(googleDocsHTML, schema);
+```
+
+### Markdown Export
+
+```typescript
+// Export to markdown
+import { markdownExport } from 'skiff-prosemirror/markdownExport';
+
+const markdown = markdownExport(doc);
+```
+
+## Keyboard Shortcuts
+
+Extensive keyboard shortcuts for productivity:
+
+<Accordion title="Text Formatting Shortcuts">
+  ```
+  ⌘B / Ctrl+B         Bold
+  ⌘I / Ctrl+I         Italic
+  ⌘U / Ctrl+U         Underline
+  ⌘⇧X / Ctrl+Shift+X  Strikethrough
+  ⌘E / Ctrl+E         Inline code
+  ⌘K / Ctrl+K         Insert link
+  ```
+</Accordion>
+
+<Accordion title="Paragraph Shortcuts">
+  ```
+  ⌘⌥1 / Ctrl+Alt+1    Heading 1
+  ⌘⌥2 / Ctrl+Alt+2    Heading 2
+  ⌘⌥0 / Ctrl+Alt+0    Paragraph
+  ⌘⇧7 / Ctrl+Shift+7  Ordered list
+  ⌘⇧8 / Ctrl+Shift+8  Bullet list
+  ⌘⇧9 / Ctrl+Shift+9  Task list
+  ```
+</Accordion>
+
+<Accordion title="Editor Shortcuts">
+  ```
+  ⌘Z / Ctrl+Z         Undo
+  ⌘⇧Z / Ctrl+Shift+Z  Redo
+  ⌘S / Ctrl+S         Save
+  ⌘P / Ctrl+P         Print
+  ⌘F / Ctrl+F         Find
+  Tab                 Indent
+  Shift+Tab           Outdent
+  ```
+</Accordion>
+
+## Mobile Editing
+
+Optimized for mobile devices:
+
+- Touch-optimized toolbar
+- Mobile-friendly keyboard shortcuts
+- Gesture support for selection
+- Offline editing with sync
+- Native mobile apps
+
+## Technical Implementation
+
+### Source Code Structure
+
+```
+libs/skiff-prosemirror/src/
+├── EditorSchema.ts          # Document schema definition
+├── EditorNodes.ts           # Node type registry
+├── EditorMarks.ts           # Mark type registry
+├── EditorPlugins.ts         # Plugin initialization
+├── EditorCommands.ts        # Command implementations
+├── EditorKeyMap.ts          # Keyboard shortcuts
+├── commands/                # Command logic
+├── plugins/                 # Custom plugins
+├── schema/                  # Schema definitions
+├── ui/                      # UI components
+├── pasteHandlers/           # Paste handling
+├── inputRules/              # Input rule definitions
+├── markdownExport/          # Markdown export logic
+├── floatingToolbar/         # Formatting toolbar
+├── slashMenu/               # Slash command menu
+├── mentionsMenu/            # User mention autocomplete
+├── comments/                # Comment system
+└── utils/                   # Utility functions
+```
+
+### Custom Commands
+
+Skiff implements many custom ProseMirror commands:
+
+- `HeadingCommand`: Convert to heading
+- `TextColorCommand`: Change text color
+- `TextHighlightCommand`: Highlight text
+- `FontSizeCommand`: Adjust font size
+- `FontTypeCommand`: Change font family
+- `TextAlignCommand`: Set text alignment
+- `IndentCommand`: Indent/outdent
+- `TableInsertCommand`: Insert table
+- `TableMergeCellsCommand`: Merge table cells
+- `ImageInsertCommand`: Insert image
+- `LinkSetURLCommand`: Create/edit link
+- `MathInsertCommand`: Insert math equation
+
+## Privacy and Security
+
+### Zero-Knowledge Editing
+
+- All content encrypted before leaving device
+- Server cannot read document contents
+- Private keys remain on client devices
+- Encrypted collaboration using shared keys
+
+### Secure Sharing
+
+- Share links with encryption keys in URL fragment
+- Optional password protection for shares
+- Expiring access links
+- Revocable permissions
+
+## Getting Started
+
+<Steps>
+  <Step title="Create a Document">
+    Click "New Document" in Skiff Pages
+  </Step>
+  <Step title="Start Writing">
+    Use the rich text editor with all formatting options
+  </Step>
+  <Step title="Add Content">
+    Insert images, tables, links, and other rich content
+  </Step>
+  <Step title="Share and Collaborate">
+    Share your document with others for collaboration
+  </Step>
+</Steps>
+
+## Learn More
+
+- [ProseMirror Documentation](https://prosemirror.net/)
+- [Tiptap Guide](https://tiptap.dev/)
+- [Skiff ProseMirror Source](https://github.com/skiff-org/skiff-apps/tree/main/libs/skiff-prosemirror)
+- [Skiff Crypto Library](https://skiff.com/skiff-crypto)

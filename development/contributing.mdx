@@ -1,0 +1,387 @@
+---
+title: Contributing
+description: Guidelines for contributing to Skiff open source projects
+icon: 'code-pull-request'
+---
+
+## Welcome Contributors!
+
+Contributions are always welcome! This guide will help you understand the contribution process and best practices for the Skiff project.
+
+## Code of Conduct
+
+Skiff contributors adhere to the [Contributor Covenant](https://www.contributor-covenant.org/) as our Code of Conduct. Please read and follow the full text available in [CODE_OF_CONDUCT.md](https://github.com/skiff-org/skiff-apps/blob/main/CODE_OF_CONDUCT.md).
+
+## Getting Started
+
+### Finding an Issue
+
+<Steps>
+  <Step title="Browse Good First Issues">
+    Start with issues labeled [**good first issue**](https://github.com/skiff-org/skiff-apps/issues?q=is:open+is:issue+label:"good+first+issue"). These are:
+    - Small in scope
+    - Have clear solutions in the description
+    - Perfect for first-time contributors
+  </Step>
+
+  <Step title="Explore Dev Ready Issues">
+    Once familiar with the codebase, look at [**dev ready**](https://github.com/skiff-org/skiff-apps/issues?q=is:open+is:issue+label:"dev+ready") issues:
+    - Slightly larger in scope
+    - Well-defined solutions
+    - Ready for implementation
+  </Step>
+
+  <Step title="Claim an Issue">
+    **Before starting work**, comment on the issue thread to claim it:
+
+    ```
+    I'd like to work on this issue.
+    ```
+
+    You'll be assigned to the issue and appear in the "Assignee" section.
+  </Step>
+</Steps>
+
+<Warning>
+  **Important**: Always claim an issue before starting work to avoid duplicated effort. If there's no progress for 7 days, anyone can take over the issue.
+</Warning>
+
+### Issues Without Clear Solutions
+
+Issues that lack a clear solution or aren't on the roadmap will undergo a longer development and review process. Consider discussing your approach in the issue comments before starting.
+
+## Opening a Pull Request
+
+### Before You Start
+
+<Note>
+  Always create an issue first before opening a Pull Request. Keep PRs small and associated with only a single issue for faster review.
+</Note>
+
+### Step-by-Step Process
+
+<Steps>
+  <Step title="Fork the Repository">
+    Fork the repository to your GitHub account:
+
+    [Fork skiff-apps](https://github.com/skiff-org/skiff-apps/fork)
+  </Step>
+
+  <Step title="Clone and Setup">
+    Clone your fork and add the upstream remote:
+
+    ```bash
+    git clone https://github.com/<your-username>/skiff-apps.git
+    cd skiff-apps
+    git remote add upstream https://github.com/skiff-org/skiff-apps.git
+    ```
+  </Step>
+
+  <Step title="Sync with Main">
+    Synchronize your local `main` branch:
+
+    ```bash
+    git checkout main
+    git pull upstream main
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install dependencies with Yarn:
+
+    ```bash
+    yarn install
+    ```
+  </Step>
+
+  <Step title="Create Feature Branch">
+    Create a new branch with the issue number:
+
+    ```bash
+    git checkout -b feature/issue-123-short-description
+    ```
+
+    <Info>
+      Include the issue number in your branch name for easy tracking.
+    </Info>
+  </Step>
+
+  <Step title="Make Your Changes">
+    Implement your changes, following the code style guidelines below.
+  </Step>
+
+  <Step title="Run Quality Checks">
+    Before committing, ensure your code passes all checks:
+
+    ```bash
+    # Format code with Prettier
+    yarn prettier
+
+    # Lint code
+    yarn lint
+
+    # Check TypeScript types
+    yarn typescript
+    ```
+
+    <Warning>
+      These checks will be run by CI. Fix any issues before opening your PR.
+    </Warning>
+  </Step>
+
+  <Step title="Commit and Push">
+    Commit your changes and push to your fork:
+
+    ```bash
+    git add .
+    git commit -m "[#123] Add feature description"
+    git push -u origin HEAD
+    ```
+  </Step>
+
+  <Step title="Open Pull Request">
+    Go to [the repository](https://github.com/skiff-org/skiff-apps/pulls) and create a Pull Request from your branch.
+  </Step>
+</Steps>
+
+## Pull Request Structure
+
+### Branch Guidelines
+
+- All branches should target `main`
+- Include the reference issue number in the branch name
+- Use descriptive names: `feature/issue-123-add-dark-mode`
+
+### PR Title Format
+
+Use this format for PR titles:
+
+```
+[Issue #] [Component] Imperative description
+```
+
+**Examples**:
+- `[#1045] [Button] Add force theme support`
+- `[#892] [ComposePanel] Fix attachment upload error`
+- `[#1234] [Auth] Implement two-factor authentication`
+
+### PR Description
+
+Your PR description should include:
+
+1. **Summary**: Brief overview of the changes
+2. **How to Review**: Guide reviewers on code structure
+3. **Testing**: How you tested the changes
+4. **Screenshots**: For UI changes
+5. **Related Issues**: Link to the issue being addressed
+
+**Template**:
+```markdown
+## Summary
+Implements dark mode support for the Button component.
+
+## How to Review
+- Check `components/Button/Button.tsx` for theme logic
+- Review `hooks/useTheme.ts` for new theme utilities
+
+## Testing
+- Tested manually in both light and dark modes
+- Added unit tests in `Button.test.tsx`
+
+## Screenshots
+[Include before/after screenshots]
+
+## Related Issues
+Closes #1045
+```
+
+### Quality Requirements
+
+<Tabs>
+  <Tab title="Code Quality">
+    - All code must be linted: `yarn lint`
+    - All code must be formatted: `yarn prettier`
+    - All code must be type-safe: `yarn typescript`
+    - Self-review and comment on your own code
+  </Tab>
+
+  <Tab title="Documentation">
+    - API changes must tag the core team for docs updates
+    - Add JSDoc comments for public APIs
+    - Update README if adding new features
+  </Tab>
+
+  <Tab title="Testing">
+    - Add tests for new features
+    - Ensure existing tests pass
+    - Test manually in the browser
+  </Tab>
+
+  <Tab title="Git">
+    - Branch must be up-to-date with `main`
+    - Commits should be logical and well-described
+    - Squash commits if requested
+  </Tab>
+</Tabs>
+
+## Code Style
+
+### Automated Formatting
+
+The project uses **Prettier** for code formatting and **ESLint** for code quality.
+
+<CodeGroup>
+
+```bash Format Code
+yarn prettier
+```
+
+```bash Lint Code
+yarn lint
+```
+
+```bash Auto-fix Lint Issues
+yarn lint --fix
+```
+
+```bash Check TypeScript
+yarn typescript
+```
+
+</CodeGroup>
+
+### Editor Setup
+
+<Tip>
+  Enable **lint-on-save** in your editor for the best development experience.
+</Tip>
+
+**VS Code settings** (`.vscode/settings.json`):
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  }
+}
+```
+
+### Style Guidelines
+
+- Use **TypeScript** for all new code
+- Follow **functional programming** patterns where possible
+- Prefer **React hooks** over class components
+- Use **meaningful variable names**
+- Add **comments** for complex logic
+- Keep functions **small and focused**
+
+## Review Process
+
+Once you open a PR:
+
+1. **Automated Checks**: CI will run linting, type checking, and tests
+2. **Code Review**: Core team members will review your code
+3. **Feedback**: Address any requested changes
+4. **Approval**: Once approved, your PR will be merged
+
+<Info>
+  The core team will promptly review your Pull Request and either merge it or request changes.
+</Info>
+
+## Communication
+
+### Where to Ask Questions
+
+- **Issue Comments**: For questions about specific issues
+- **PR Comments**: For questions about your implementation
+- **GitHub Discussions**: For general questions about the project
+
+### Response Times
+
+- **Issue Claims**: Immediate (comment to claim)
+- **PR Reviews**: Usually within 3-5 business days
+- **Questions**: Best-effort response within 1-2 business days
+
+## Common Scenarios
+
+<AccordionGroup>
+  <Accordion title="My PR has merge conflicts">
+    Sync your branch with the latest `main`:
+
+    ```bash
+    git checkout main
+    git pull upstream main
+    git checkout your-branch
+    git rebase main
+    git push --force-with-lease
+    ```
+  </Accordion>
+
+  <Accordion title="CI checks are failing">
+    Run the checks locally:
+
+    ```bash
+    yarn prettier
+    yarn lint
+    yarn typescript
+    yarn test
+    ```
+
+    Fix any issues and push again.
+  </Accordion>
+
+  <Accordion title="I need to update my PR">
+    Simply push more commits to your branch:
+
+    ```bash
+    git add .
+    git commit -m "Address review feedback"
+    git push
+    ```
+
+    The PR will update automatically.
+  </Accordion>
+
+  <Accordion title="Can I work on multiple issues?">
+    Yes! Create separate branches for each issue:
+
+    ```bash
+    git checkout main
+    git pull upstream main
+    git checkout -b feature/issue-456-another-feature
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Recognition
+
+Contributors are recognized in:
+- GitHub's contributor graph
+- Release notes (for significant contributions)
+- The community (through issue/PR interactions)
+
+## License
+
+By contributing to Skiff, you agree that your contributions will be licensed under the same license as the project. See [LICENSE](https://github.com/skiff-org/skiff-apps/blob/main/LICENSE) for details.
+
+## Additional Resources
+
+<CardGroup cols={2}>
+  <Card title="Development Setup" icon="laptop-code" href="/development/setup">
+    Set up your local environment
+  </Card>
+  <Card title="Monorepo Structure" icon="folder-tree" href="/development/monorepo-structure">
+    Understand the codebase organization
+  </Card>
+  <Card title="Testing Guide" icon="flask" href="/development/testing">
+    Learn about testing practices
+  </Card>
+  <Card title="Code of Conduct" icon="handshake">
+    Read the full Code of Conduct
+  </Card>
+</CardGroup>
+
+---
+
+**Thank you for contributing to Skiff!** Your efforts help make privacy-first software accessible to everyone.

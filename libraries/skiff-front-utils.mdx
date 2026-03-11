@@ -1,0 +1,442 @@
+---
+title: "skiff-front-utils"
+description: "Frontend-specific utilities, components, and React hooks"
+---
+
+## Overview
+
+`skiff-front-utils` provides frontend-specific utilities for Skiff applications, including React hooks, document utilities, UI components, encryption helpers, and client-side helpers.
+
+**Package**: `skiff-front-utils`  
+**Source**: `libs/skiff-front-utils/`
+
+## Key Features
+
+- Document encryption and decryption utilities
+- React hooks for common operations
+- File upload and download helpers
+- UI utility components
+- Apollo Client utilities
+- Toast notifications
+- Feature flag integration
+
+## Document Utilities
+
+Located in `libs/skiff-front-utils/src/utils/documentUtils/`
+
+### Document Encryption
+
+```typescript
+import { 
+  createPermissionsAuthData,
+  createChunkAuthData,
+  MetadataDatagram 
+} from 'skiff-front-utils';
+
+// Create signature data for permissions
+const authData = createPermissionsAuthData(
+  encryptedSessionKey,
+  PermissionLevel.Editor,
+  expiryDate
+);
+
+// Create signature data for document chunks
+const chunkAuth = createChunkAuthData(0, encryptedContent);
+
+// Metadata datagram for document metadata
+const metadata = MetadataDatagram.encode({ title, icon, color });
+```
+
+Source: `libs/skiff-front-utils/src/utils/documentUtils/docCryptoUtils.ts:1`
+
+### Document Operations
+
+```typescript
+import { 
+  downloadDocument,
+  uploadDocument,
+  createDocRequest 
+} from 'skiff-front-utils';
+
+// Download document with decryption
+await downloadDocument({
+  docID,
+  client,
+  privateKey,
+  publicKey
+});
+
+// Create document request for GraphQL
+const request = createDocRequest({
+  docID,
+  contents,
+  metadata
+});
+```
+
+Source: `libs/skiff-front-utils/src/utils/documentUtils/`
+
+## React Hooks
+
+Located in `libs/skiff-front-utils/src/hooks/`
+
+### useToast
+
+Display toast notifications to users.
+
+```typescript
+import { useToast } from 'skiff-front-utils';
+
+function MyComponent() {
+  const { enqueueToast, closeToast } = useToast();
+
+  const showSuccess = () => {
+    enqueueToast({
+      title: 'Success!',
+      body: 'Document saved successfully',
+      type: 'success'
+    });
+  };
+
+  const showError = () => {
+    const key = enqueueToast({
+      title: 'Error',
+      body: 'Failed to save document',
+      type: 'error',
+      persist: true, // Don't auto-hide
+      actions: [
+        {
+          label: 'Retry',
+          onClick: () => {
+            retryOperation();
+            closeToast(key);
+          }
+        }
+      ]
+    });
+  };
+
+  return <button onClick={showSuccess}>Save</button>;
+}
+```
+
+Source: `libs/skiff-front-utils/src/hooks/useToast.tsx:1`
+
+### useDocument
+
+Manage document state and operations.
+
+```typescript
+import { useDocument } from 'skiff-front-utils';
+
+function DocumentEditor({ docID }) {
+  const { 
+    document,
+    loading,
+    error,
+    updateDocument,
+    deleteDocument 
+  } = useDocument(docID);
+
+  if (loading) return <Spinner />;
+  if (error) return <Error />;
+
+  return (
+    <div>
+      <h1>{document.metadata.title}</h1>
+      <button onClick={() => updateDocument({ title: 'New Title' })}>
+        Update
+      </button>
+    </div>
+  );
+}
+```
+
+Source: `libs/skiff-front-utils/src/hooks/useDocument.tsx:1`
+
+### useCurrentUserEmailAliases
+
+Get current user's email aliases.
+
+```typescript
+import { useCurrentUserEmailAliases } from 'skiff-front-utils';
+
+function AliasSelector() {
+  const { 
+    emailAliases,
+    defaultAlias,
+    loading 
+  } = useCurrentUserEmailAliases();
+
+  return (
+    <select defaultValue={defaultAlias}>
+      {emailAliases.map(alias => (
+        <option key={alias} value={alias}>{alias}</option>
+      ))}
+    </select>
+  );
+}
+```
+
+Source: `libs/skiff-front-utils/src/hooks/useCurrentUserEmailAliases.tsx:1`
+
+### useFeatureTag & useGetFF
+
+Feature flag hooks for A/B testing and gradual rollouts.
+
+```typescript
+import { useFeatureTag, useGetFF } from 'skiff-front-utils';
+
+function FeatureComponent() {
+  // Get specific feature flag value
+  const isNewEditorEnabled = useFeatureTag('new-editor');
+  
+  // Get feature flag function
+  const getFF = useGetFF();
+  const showBetaFeatures = getFF('beta-features');
+
+  return isNewEditorEnabled ? <NewEditor /> : <LegacyEditor />;
+}
+```
+
+Source: `libs/skiff-front-utils/src/hooks/`
+
+### useStorageLimit & useStorageUsage
+
+Monitor user's storage quota.
+
+```typescript
+import { useStorageLimit, useStorageUsage } from 'skiff-front-utils';
+
+function StorageIndicator() {
+  const { storageLimit } = useStorageLimit();
+  const { storageUsed, loading } = useStorageUsage();
+
+  const percentUsed = (storageUsed / storageLimit) * 100;
+
+  return (
+    <div>
+      <ProgressBar value={percentUsed} />
+      <span>{storageUsed} / {storageLimit} bytes used</span>
+    </div>
+  );
+}
+```
+
+Source: `libs/skiff-front-utils/src/hooks/`
+
+### useDebouncedCallback
+
+Debounce callback functions.
+
+```typescript
+import { useDebouncedCallback } from 'skiff-front-utils';
+
+function SearchInput() {
+  const debouncedSearch = useDebouncedCallback(
+    (query: string) => {
+      performSearch(query);
+    },
+    500 // 500ms delay
+  );
+
+  return (
+    <input
+      onChange={(e) => debouncedSearch(e.target.value)}
+      placeholder="Search..."
+    />
+  );
+}
+```
+
+Source: `libs/skiff-front-utils/src/hooks/useDebouncedCallback.ts:1`
+
+### Other Useful Hooks
+
+```typescript
+import {
+  useMediaQuery,      // Responsive design
+  usePrevious,        // Track previous value
+  useResizeObserver,  // Observe element size changes
+  useWarnBeforeUnloading, // Warn before leaving page
+  useTimedRerender    // Periodic re-renders
+} from 'skiff-front-utils';
+
+// Responsive design
+const isMobile = useMediaQuery('(max-width: 768px)');
+
+// Track previous prop value
+const prevValue = usePrevious(currentValue);
+
+// Observe element resizing
+const { ref, width, height } = useResizeObserver();
+
+// Warn before leaving with unsaved changes
+useWarnBeforeUnloading(hasUnsavedChanges);
+```
+
+Source: `libs/skiff-front-utils/src/hooks/`
+
+## File Utilities
+
+Located in `libs/skiff-front-utils/src/utils/`
+
+### File Upload
+
+```typescript
+import { uploadFile, processFileUpload } from 'skiff-front-utils';
+
+// Handle file uploads with encryption
+await uploadFile({
+  file,
+  docID,
+  sessionKey,
+  publicKey,
+  client
+});
+```
+
+Source: `libs/skiff-front-utils/src/utils/uploadUtils.ts:1`
+
+### File Preview
+
+```typescript
+import { useFilePreview } from 'skiff-front-utils';
+
+function FilePreview({ fileID }) {
+  const { previewUrl, loading, error } = useFilePreview(fileID);
+
+  if (loading) return <Spinner />;
+  if (error) return <div>Preview unavailable</div>;
+
+  return <img src={previewUrl} alt="Preview" />;
+}
+```
+
+Source: `libs/skiff-front-utils/src/hooks/useFilePreview.ts:1`
+
+## Copy Utilities
+
+Located in `libs/skiff-front-utils/src/utils/copyUtils.ts`
+
+```typescript
+import { copyToClipboard } from 'skiff-front-utils';
+
+// Copy text to clipboard
+await copyToClipboard('text to copy');
+```
+
+Source: `libs/skiff-front-utils/src/utils/copyUtils.ts:1`
+
+## Link Generation Utilities
+
+Create deep links to Skiff applications.
+
+```typescript
+import { 
+  linkToEmailUtils,
+  linkToDriveUtils,
+  linkToEditorUtils,
+  linkToCalendarUtils 
+} from 'skiff-front-utils';
+
+// Generate links to specific documents/emails
+const emailLink = linkToEmailUtils.getThreadLink(threadID);
+const docLink = linkToEditorUtils.getDocLink(docID);
+const fileLink = linkToDriveUtils.getFileLink(fileID);
+const eventLink = linkToCalendarUtils.getEventLink(eventID);
+```
+
+Source: `libs/skiff-front-utils/src/utils/`
+
+## Apollo Client Utilities
+
+Located in `libs/skiff-front-utils/src/apollo/`
+
+```typescript
+import { createApolloClient, typePolicies } from 'skiff-front-utils';
+
+// Create configured Apollo Client instance
+const client = createApolloClient({
+  uri: graphqlEndpoint,
+  credentials: userCredentials
+});
+```
+
+Source: `libs/skiff-front-utils/src/apollo/`
+
+## Theme Provider
+
+```typescript
+import { AppThemeProvider } from 'skiff-front-utils';
+
+function App() {
+  return (
+    <AppThemeProvider>
+      <YourApp />
+    </AppThemeProvider>
+  );
+}
+```
+
+Source: `libs/skiff-front-utils/src/theme/AppThemeProvider.ts:1`
+
+## Components
+
+Located in `libs/skiff-front-utils/src/components/`
+
+The library exports various UI components including:
+
+- **CustomCircularProgress**: Loading spinners
+- **Modals and dialogs**: Reusable modal components
+- **Form components**: Input wrappers and validators
+- **Layout components**: Flexbox and grid helpers
+
+```typescript
+import { CustomCircularProgress } from 'skiff-front-utils';
+
+function LoadingView() {
+  return <CustomCircularProgress size={40} />;
+}
+```
+
+Source: `libs/skiff-front-utils/src/components/`
+
+## Installation
+
+This is a workspace package:
+
+```json
+{
+  "dependencies": {
+    "skiff-front-utils": "workspace:libs/skiff-front-utils"
+  }
+}
+```
+
+## Key Dependencies
+
+- **@apollo/client**: GraphQL client
+- **skiff-crypto**: Encryption utilities
+- **skiff-graphql**: GraphQL types
+- **skiff-utils**: Shared utilities
+- **notistack**: Toast notifications
+- **nightwatch-ui**: UI component library
+- **@mui/material**: Material-UI components
+
+## Peer Dependencies
+
+```json
+{
+  "react": "^17.0.0",
+  "react-dom": "^17.0.0",
+  "notistack": "^2.0.3"
+}
+```
+
+## Related Libraries
+
+- [skiff-utils](/libraries/skiff-utils) - Shared utilities
+- [skiff-graphql](/libraries/skiff-graphql) - GraphQL types
+- [skiff-front-graphql](/libraries/skiff-graphql) - Frontend GraphQL hooks
+- [skiff-front-search](/libraries/skiff-front-search) - Search functionality

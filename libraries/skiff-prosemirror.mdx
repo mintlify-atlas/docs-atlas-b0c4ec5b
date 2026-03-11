@@ -1,0 +1,687 @@
+---
+title: 'Skiff ProseMirror'
+description: 'A feature-rich collaborative rich text editor built on ProseMirror with real-time collaboration, comments, and extensibility'
+---
+
+## Overview
+
+Skiff ProseMirror is a powerful rich text editor library built on top of [ProseMirror](https://prosemirror.net/). It provides a complete editing solution with:
+
+- **Real-time collaboration** via Yjs and y-prosemirror
+- **Rich formatting** with custom nodes and marks
+- **Mathematical expressions** with KaTeX rendering
+- **Code blocks** with syntax highlighting (CodeMirror 6)
+- **Tables** with advanced editing capabilities
+- **Comments** and annotations
+- **Mentions** and slash commands
+- **Subpages** and nested documents
+- **Custom schema** for document structure
+
+This is the editor powering Skiff's document editing experience.
+
+## Installation
+
+```bash
+yarn add skiff-prosemirror
+```
+
+### Peer Dependencies
+
+Ensure these are installed in your project:
+
+```bash
+yarn add react react-dom yjs y-protocols
+```
+
+## Quick Start
+
+### Basic Editor Setup
+
+```typescript
+import { RichTextEditor, EditorSchema, buildEditorPlugins } from 'skiff-prosemirror';
+import { EditorState } from 'prosemirror-state';
+import { ThemeMode } from 'nightwatch-ui';
+
+function Editor() {
+  const [editorState, setEditorState] = useState(() =>
+    EditorState.create({
+      schema: EditorSchema,
+      plugins: buildEditorPlugins({
+        schema: EditorSchema,
+        theme: ThemeMode.LIGHT
+      })
+    })
+  );
+
+  const handleChange = (
+    state: EditorState,
+    docChanged: boolean
+  ) => {
+    setEditorState(state);
+    if (docChanged) {
+      // Handle document changes
+    }
+  };
+
+  return (
+    <RichTextEditor
+      editorState={editorState}
+      onChange={handleChange}
+      theme={ThemeMode.LIGHT}
+      placeholder="Start writing..."
+    />
+  );
+}
+```
+
+### Read-Only Mode
+
+```typescript
+const plugins = buildEditorPlugins({
+  schema: EditorSchema,
+  readOnly: true,
+  theme: ThemeMode.DARK
+});
+
+const state = EditorState.create({
+  schema: EditorSchema,
+  plugins,
+  doc: // ... your document
+});
+
+<RichTextEditor
+  editorState={state}
+  onChange={handleChange}
+  disabled={true}
+/>
+```
+
+## Editor Schema
+
+The editor uses a custom ProseMirror schema with specialized nodes and marks.
+
+### Schema Structure
+
+```typescript
+import { EditorSchema, LooseSchema } from 'skiff-prosemirror';
+
+// Standard schema with required structure
+const schema = EditorSchema;
+
+// Loose schema for importing external documents
+const looseSchema = LooseSchema;
+```
+
+### Document Nodes
+
+The schema includes these core node types:
+
+<Tabs>
+  <Tab title="Block Nodes">
+    - `doc` - Root document node
+    - `doc_icon` - Document icon
+    - `doc_title` - Document title (required)
+    - `doc_description` - Document description
+    - `paragraph` - Text paragraphs
+    - `heading` - Headings (levels 1-3)
+    - `blockquote` - Block quotes
+    - `code_block` - Code blocks with syntax highlighting
+    - `horizontal_rule` - Horizontal divider
+  </Tab>
+  <Tab title="List Nodes">
+    - `bullet_list` - Unordered lists
+    - `ordered_list` - Ordered lists
+    - `list_item` - List items
+    - `todo_list` - Todo lists
+    - `list_task_item` - Todo list items
+    - `toggle_list` - Collapsible toggle lists
+    - `toggle_list_item` - Toggle list items
+    - `toggle_item_title` - Toggle item header
+    - `toggle_item_content` - Toggle item body
+  </Tab>
+  <Tab title="Special Nodes">
+    - `image` - Images
+    - `bookmark` - Link previews/bookmarks
+    - `mention` - User mentions
+    - `file_embed` - Embedded files
+    - `math_inline` - Inline math (LaTeX)
+    - `math_display` - Block math (LaTeX)
+    - `subpage` - Nested subpage references
+    - `table`, `table_row`, `table_cell`, `table_header` - Table nodes
+  </Tab>
+</Tabs>
+
+See `libs/skiff-prosemirror/src/EditorNodes.ts:67` for the complete node specification.
+
+### Text Marks
+
+Formatting marks that can be applied to text:
+
+- `link` - Hyperlinks
+- `strong` - Bold text
+- `em` - Italic text
+- `underline` - Underlined text
+- `strike` - Strikethrough text
+- `code` - Inline code
+- `text_color` - Text color
+- `text_highlight` - Background highlight
+- `font_size` - Font size
+- `font_type` - Font family
+- `comment` - Comment annotations
+- `super` - Superscript
+- `spacer` - Non-breaking space
+
+See `libs/skiff-prosemirror/src/EditorMarks.ts:59` for mark specifications.
+
+## Plugins
+
+The editor uses a comprehensive plugin system for functionality.
+
+### Building Plugins
+
+```typescript
+import { buildEditorPlugins } from 'skiff-prosemirror';
+
+interface BuildEditorPluginsProps {
+  schema: Schema;
+  userSettings?: UserSettings;
+  readOnly?: boolean;
+  theme?: ThemeMode;
+  isTemplate?: boolean;
+}
+
+const plugins = buildEditorPlugins({
+  schema: EditorSchema,
+  readOnly: false,
+  theme: ThemeMode.LIGHT,
+  isTemplate: false
+});
+```
+
+### Plugin List
+
+The editor includes 30+ plugins (see `libs/skiff-prosemirror/src/buildEditorPlugins.ts:78`):
+
+<AccordionGroup>
+  <Accordion title="Core Editing Plugins">
+    - **Slash Menu** - Command palette (`/` trigger)
+    - **Mentions Menu** - User mention autocomplete (`@` trigger)
+    - **Input Rules** - Auto-formatting (e.g., `**bold**`)
+    - **Keymap** - Keyboard shortcuts
+    - **Selection Tracker** - Selection state management
+    - **Gap Cursor** - Cursor in non-text positions
+  </Accordion>
+
+  <Accordion title="Content Plugins">
+    - **Math Plugin** - LaTeX math rendering
+    - **Code Block** - Syntax highlighted code (CodeMirror)
+    - **Table Plugins** - Table editing and navigation
+    - **Link Tooltip** - Link preview on hover
+    - **Transform Pasted Slice** - Smart paste from Google Docs
+  </Accordion>
+
+  <Accordion title="Collaboration Plugins">
+    - **Sync Plugin** - Document synchronization
+    - **Comments Popup** - Inline comments
+    - **Subpage Plugin** - Nested document support
+  </Accordion>
+
+  <Accordion title="UI Plugins">
+    - **Floating Toolbar** - Format toolbar on selection
+    - **Content Placeholder** - Empty state placeholders
+    - **Cursor Placeholder** - Typing indicators
+    - **Editor Page Layout** - Layout management
+  </Accordion>
+
+  <Accordion title="Drag & Drop Plugins">
+    - **Text Block Handle** - Block drag handles
+    - **Drop Cursor** - Drop position indicator
+    - **Multiple Selection** - Multi-block selection
+  </Accordion>
+</AccordionGroup>
+
+## Commands & Transformations
+
+### Formatting Commands
+
+```typescript
+import { toggleMark } from 'prosemirror-commands';
+import { EditorState } from 'prosemirror-state';
+
+// Bold
+toggleMark(schema.marks.strong)(state, dispatch);
+
+// Italic
+toggleMark(schema.marks.em)(state, dispatch);
+
+// Underline
+toggleMark(schema.marks.underline)(state, dispatch);
+```
+
+### Node Insertion
+
+```typescript
+// Insert heading
+const headingCommand = setBlockType(schema.nodes.heading, { level: 2 });
+headingCommand(state, dispatch);
+
+// Insert code block
+const codeBlockCommand = setBlockType(schema.nodes.code_block);
+codeBlockCommand(state, dispatch);
+
+// Insert horizontal rule
+const hrCommand = (state, dispatch) => {
+  dispatch(state.tr.replaceSelectionWith(schema.nodes.horizontal_rule.create()));
+  return true;
+};
+```
+
+### Custom Commands
+
+```typescript
+import { insertMathCmd } from '@benrbray/prosemirror-math';
+
+// Insert inline math
+const mathCommand = insertMathCmd(schema.nodes.math_inline);
+mathCommand(state, dispatch);
+```
+
+## HTML Conversion
+
+### Import from HTML
+
+```typescript
+import { convertFromHTML } from 'skiff-prosemirror';
+import { DOMParser } from 'prosemirror-model';
+
+// Convert HTML to ProseMirror document
+const doc = convertFromHTML(htmlString, EditorSchema);
+
+const state = EditorState.create({
+  schema: EditorSchema,
+  doc
+});
+```
+
+### Export to Markdown
+
+```typescript
+import { SerializeToMarkdown } from 'skiff-prosemirror';
+
+const markdown = SerializeToMarkdown(editorState.doc);
+```
+
+## Collaboration Features
+
+### Yjs Integration
+
+The editor supports real-time collaboration through Yjs:
+
+```typescript
+import { ySyncPlugin, yCursorPlugin, yUndoPlugin } from 'y-prosemirror';
+import * as Y from 'yjs';
+
+const ydoc = new Y.Doc();
+const type = ydoc.get('prosemirror', Y.XmlFragment);
+
+const plugins = [
+  ySyncPlugin(type),
+  yCursorPlugin(provider.awareness),
+  yUndoPlugin(),
+  ...buildEditorPlugins({ schema: EditorSchema })
+];
+```
+
+### Comments System
+
+```typescript
+import { commentPluginKey } from 'skiff-prosemirror';
+
+// Access comment plugin state
+const commentState = commentPluginKey.getState(editorState);
+
+// Check if thread is unread
+import { checkIfThreadUnreadByAttrs } from 'skiff-prosemirror';
+const isUnread = checkIfThreadUnreadByAttrs(threadAttrs, userId);
+```
+
+### Subpages
+
+```typescript
+import { 
+  SubpagePlugin, 
+  updateChildDocuments,
+  stopPreventRemoveSubpage 
+} from 'skiff-prosemirror';
+
+// Update child document references
+updateChildDocuments(view, childDocIds);
+
+// Allow subpage removal
+stopPreventRemoveSubpage(view);
+```
+
+## Custom Node Views
+
+Extend the editor with custom node renderers:
+
+```typescript
+import { EditorView } from 'prosemirror-view';
+
+const nodeViews = {
+  image: (node, view, getPos) => {
+    const dom = document.createElement('div');
+    const img = document.createElement('img');
+    img.src = node.attrs.src;
+    dom.appendChild(img);
+    
+    return {
+      dom,
+      update: (updatedNode) => {
+        if (updatedNode.type.name !== 'image') return false;
+        img.src = updatedNode.attrs.src;
+        return true;
+      }
+    };
+  }
+};
+
+<RichTextEditor
+  editorState={state}
+  initialNodeViews={nodeViews}
+  onChange={handleChange}
+/>
+```
+
+## Editor Props
+
+### RichTextEditor Component
+
+<ParamField path="editorState" type="EditorState" required>
+  ProseMirror editor state
+</ParamField>
+
+<ParamField path="onChange" type="(state: EditorState, docChanged: boolean, view?: EditorView) => void">
+  State change handler
+</ParamField>
+
+<ParamField path="theme" type="ThemeMode" required>
+  Editor theme (light or dark)
+</ParamField>
+
+<ParamField path="onReady" type="(view: EditorView) => void">
+  Called when editor is mounted
+</ParamField>
+
+<ParamField path="placeholder" type="string">
+  Empty state placeholder text
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  Disable editing
+</ParamField>
+
+<ParamField path="autoFocus" type="boolean">
+  Auto-focus on mount
+</ParamField>
+
+<ParamField path="height" type="string | number">
+  Editor height
+</ParamField>
+
+<ParamField path="width" type="string | number">
+  Editor width
+</ParamField>
+
+<ParamField path="embedded" type="boolean">
+  Embedded mode styling
+</ParamField>
+
+<ParamField path="initialNodeViews" type="NodeViewConstructorMap">
+  Custom node view implementations
+</ParamField>
+
+<ParamField path="commentsSidepanelOpen" type="boolean">
+  Comments panel state
+</ParamField>
+
+<ParamField path="snapshotPanelOpen" type="boolean">
+  Snapshot panel state
+</ParamField>
+
+## Keyboard Shortcuts
+
+The editor includes comprehensive keyboard shortcuts:
+
+### Text Formatting
+- **Cmd/Ctrl + B** - Bold
+- **Cmd/Ctrl + I** - Italic
+- **Cmd/Ctrl + U** - Underline
+- **Cmd/Ctrl + Shift + X** - Strikethrough
+- **Cmd/Ctrl + E** - Inline code
+- **Mod + Space** - Insert inline math
+
+### Block Formatting
+- **Cmd/Ctrl + Alt + 1/2/3** - Heading levels
+- **Cmd/Ctrl + Shift + 7** - Ordered list
+- **Cmd/Ctrl + Shift + 8** - Bullet list
+- **Cmd/Ctrl + Shift + 9** - Todo list
+- **Cmd/Ctrl + Shift + >** - Blockquote
+
+### Navigation
+- **Arrow keys** - Move cursor (with special handling in code blocks)
+- **Tab** - Indent list item
+- **Shift + Tab** - Outdent list item
+- **Enter** - Smart line breaks (context-aware)
+
+## Styling & Theming
+
+The editor respects the theme prop and integrates with Nightwatch UI:
+
+```typescript
+import { ThemeMode } from 'nightwatch-ui';
+
+<RichTextEditor
+  theme={ThemeMode.DARK}
+  editorState={state}
+  onChange={handleChange}
+/>
+```
+
+### Custom Styles
+
+Import the editor CSS:
+
+```typescript
+import 'skiff-prosemirror/style.css';
+```
+
+## Advanced Usage
+
+### Custom Plugin Development
+
+```typescript
+import { Plugin, PluginKey } from 'prosemirror-state';
+
+const myPluginKey = new PluginKey('myPlugin');
+
+const myPlugin = new Plugin({
+  key: myPluginKey,
+  state: {
+    init: () => ({ /* initial state */ }),
+    apply: (tr, state) => {
+      // Update state based on transaction
+      return state;
+    }
+  },
+  props: {
+    handleClick: (view, pos, event) => {
+      // Handle clicks
+      return false;
+    }
+  },
+  view: (editorView) => ({
+    update: (view, prevState) => {
+      // React to state changes
+    },
+    destroy: () => {
+      // Cleanup
+    }
+  })
+});
+```
+
+### Selection Management
+
+```typescript
+import { dispatchSelectionChange } from 'skiff-prosemirror';
+import { TextSelection } from 'prosemirror-state';
+
+// Programmatically update selection
+const tr = state.tr.setSelection(
+  TextSelection.create(state.doc, start, end)
+);
+dispatch(tr);
+
+// Dispatch browser selection change event
+dispatchSelectionChange();
+```
+
+### Focus Management
+
+```typescript
+import { focusEditorSelection } from 'skiff-prosemirror';
+
+// Focus editor at specific position
+focusEditorSelection(view, position);
+```
+
+## Migration & Compatibility
+
+### Loose Schema for Imports
+
+When importing documents from external sources that may not match the strict schema:
+
+```typescript
+import { LooseSchema } from 'skiff-prosemirror';
+
+const state = EditorState.create({
+  schema: LooseSchema,
+  doc: importedDoc
+});
+```
+
+The loose schema removes required doc structure elements (title, icon, etc.) while maintaining compatibility.
+
+## Performance Tips
+
+<AccordionGroup>
+  <Accordion title="Lazy load heavy plugins">
+    For read-only or simple use cases, disable heavy plugins like comments, mentions, and floating toolbar by setting `isTemplate: true` or `readOnly: true`.
+  </Accordion>
+
+  <Accordion title="Optimize node views">
+    Use `shouldUpdate` in custom node views to prevent unnecessary re-renders.
+  </Accordion>
+
+  <Accordion title="Batch transactions">
+    Combine multiple state changes into a single transaction to reduce re-renders.
+  </Accordion>
+
+  <Accordion title="Debounce onChange">
+    For autosave or sync operations, debounce the `onChange` handler to reduce update frequency.
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Document Initialization
+
+```typescript
+import { EditorState } from 'prosemirror-state';
+import { DOMParser } from 'prosemirror-model';
+
+// Create empty document
+const emptyState = EditorState.create({
+  schema: EditorSchema,
+  plugins: buildEditorPlugins({ schema: EditorSchema })
+});
+
+// Create from JSON
+const docJSON = { /* ... */ };
+const doc = EditorSchema.nodeFromJSON(docJSON);
+const state = EditorState.create({
+  schema: EditorSchema,
+  doc,
+  plugins
+});
+```
+
+### Saving Document State
+
+```typescript
+// Serialize to JSON
+const docJSON = editorState.doc.toJSON();
+
+// Store in backend
+await saveDocument({
+  id: documentId,
+  content: docJSON
+});
+```
+
+### Custom State Plugin
+
+```typescript
+import { 
+  EditorCustomStatePlugin, 
+  getCustomState 
+} from 'skiff-prosemirror';
+
+// Add custom state to editor
+const customState = { /* your state */ };
+const plugin = new EditorCustomStatePlugin(customState);
+
+// Retrieve custom state
+const state = getCustomState(editorState);
+```
+
+## Dependencies
+
+Core dependencies include:
+
+- `prosemirror-*` - ProseMirror core libraries
+- `y-prosemirror` - Yjs collaboration binding
+- `@benrbray/prosemirror-math` - Math support
+- `@codemirror/*` - Code block syntax highlighting
+- `katex` - LaTeX rendering
+- `nightwatch-ui` - UI components
+
+See `libs/skiff-prosemirror/package.json:72` for the complete list.
+
+## Resources
+
+- [ProseMirror Documentation](https://prosemirror.net/docs/)
+- [ProseMirror Guide](https://prosemirror.net/docs/guide/)
+- [Yjs Documentation](https://docs.yjs.dev/)
+- [y-prosemirror](https://github.com/yjs/y-prosemirror)
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Schema validation errors">
+    Ensure your document structure matches the schema. Use `LooseSchema` for importing external documents.
+  </Accordion>
+
+  <Accordion title="Plugin conflicts">
+    Check plugin initialization order in `buildEditorPlugins`. Some plugins depend on others being loaded first.
+  </Accordion>
+
+  <Accordion title="Yjs sync issues">
+    Make sure y-prosemirror plugins are initialized before other plugins when using collaboration features.
+  </Accordion>
+
+  <Accordion title="Math rendering not working">
+    Ensure KaTeX CSS is imported: `import 'katex/dist/katex.min.css'`
+  </Accordion>
+</AccordionGroup>

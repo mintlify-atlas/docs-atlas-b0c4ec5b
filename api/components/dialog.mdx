@@ -1,0 +1,294 @@
+---
+title: Dialog
+description: Modal dialog component for user interactions and confirmations
+---
+
+## Dialog
+
+A modal dialog component for displaying content, gathering input, and confirming actions. Supports multiple dialog types, custom content, and loading states.
+
+### Import
+
+```tsx
+import { Dialog, DialogType } from '@skiff/nightwatch-ui';
+import { ButtonGroupItem } from '@skiff/nightwatch-ui';
+```
+
+### Basic Usage
+
+```tsx
+<Dialog
+  open={isOpen}
+  onClose={() => setIsOpen(false)}
+  title="Confirm Action"
+  description="Are you sure you want to proceed?"
+>
+  <ButtonGroupItem label="Cancel" onClick={() => setIsOpen(false)} />
+  <ButtonGroupItem label="Confirm" onClick={handleConfirm} />
+</Dialog>
+```
+
+### Dialog Types
+
+```tsx
+// Confirmation dialog
+<Dialog
+  open={showConfirm}
+  onClose={handleClose}
+  type={DialogType.CONFIRM}
+  title="Delete item?"
+  description="This action cannot be undone."
+>
+  <ButtonGroupItem label="Cancel" onClick={handleClose} />
+  <ButtonGroupItem label="Delete" onClick={handleDelete} destructive />
+</Dialog>
+
+// Input dialog
+<Dialog
+  open={showInput}
+  onClose={handleClose}
+  type={DialogType.INPUT}
+  title="Enter name"
+  inputField={<InputField value={name} onChange={(e) => setName(e.target.value)} />}
+>
+  <ButtonGroupItem label="Cancel" onClick={handleClose} />
+  <ButtonGroupItem label="Save" onClick={handleSave} />
+</Dialog>
+
+// Settings dialog
+<Dialog
+  open={showSettings}
+  onClose={handleClose}
+  type={DialogType.SETTINGS}
+  title="Settings"
+  customContent
+>
+  <SettingsContent />
+</Dialog>
+```
+
+### With Progress
+
+```tsx
+<Dialog
+  open={showProgress}
+  onClose={handleClose}
+  title="Multi-step Process"
+  progress={{
+    totalNumSteps: 3,
+    currStep: currentStep
+  }}
+>
+  <ButtonGroupItem label="Back" onClick={handleBack} />
+  <ButtonGroupItem label="Next" onClick={handleNext} />
+</Dialog>
+```
+
+### Loading State
+
+```tsx
+<Dialog
+  open={isOpen}
+  onClose={handleClose}
+  title="Processing"
+  loading
+>
+  <ButtonGroupItem label="Cancel" onClick={handleClose} />
+</Dialog>
+```
+
+### Custom Content
+
+```tsx
+<Dialog
+  open={isOpen}
+  onClose={handleClose}
+  title="Custom Dialog"
+  customContent
+>
+  <CustomComponent />
+  <ButtonGroup>
+    <ButtonGroupItem label="Close" onClick={handleClose} />
+  </ButtonGroup>
+</Dialog>
+```
+
+## Dialog Props
+
+<ParamField path="open" type="boolean" required>
+  Controls whether the dialog is visible
+</ParamField>
+
+<ParamField path="onClose" type="() => void | Promise<void>" required>
+  Callback fired when the dialog should close (via close button or backdrop click)
+</ParamField>
+
+<ParamField path="children" type="ButtonGroupItemComponent[] | React.ReactNode" required>
+  Dialog button content or custom content. Typically an array of ButtonGroupItem components
+</ParamField>
+
+<ParamField path="title" type="string">
+  Dialog title text
+</ParamField>
+
+<ParamField path="description" type="string">
+  Description text displayed below the title
+</ParamField>
+
+<ParamField path="type" type="DialogType" default="DialogType.DEFAULT">
+  Dialog type variant. Options:
+  - `DialogType.DEFAULT` - Standard dialog
+  - `DialogType.CONFIRM` - Confirmation dialog with centered content
+  - `DialogType.INPUT` - Dialog optimized for input collection
+  - `DialogType.PROMOTIONAL` - Promotional content dialog
+  - `DialogType.SEARCH` - Search dialog
+  - `DialogType.SETTINGS` - Settings dialog with larger size
+  - `DialogType.LANDSCAPE` - Wide landscape dialog
+</ParamField>
+
+<ParamField path="inputField" type="InputComponent | TextAreaComponent | Array<InputComponent | TextAreaComponent>">
+  Input field(s) to display in the dialog
+</ParamField>
+
+<ParamField path="customContent" type="boolean">
+  Set to `true` when using custom content instead of ButtonGroup children
+</ParamField>
+
+<ParamField path="loading" type="boolean">
+  Shows a loading spinner in the dialog
+</ParamField>
+
+<ParamField path="progress" type="{ totalNumSteps: number; currStep: number }">
+  Progress bar configuration for multi-step dialogs
+</ParamField>
+
+<ParamField path="hideCloseButton" type="boolean" default={false}>
+  Hides the close button in the dialog header
+</ParamField>
+
+<ParamField path="disableOffClick" type="boolean">
+  Prevents closing the dialog by clicking the backdrop
+</ParamField>
+
+<ParamField path="disableTextSelect" type="boolean" default={false}>
+  Prevents text selection within the dialog
+</ParamField>
+
+<ParamField path="noPadding" type="boolean" default={false}>
+  Removes default padding from the dialog
+</ParamField>
+
+<ParamField path="size" type="SurfaceProps['size']">
+  Custom dialog size override
+</ParamField>
+
+<ParamField path="width" type="number | string">
+  Custom dialog width
+</ParamField>
+
+<ParamField path="height" type="number | string">
+  Custom dialog height
+</ParamField>
+
+<ParamField path="zIndex" type="number">
+  Custom z-index for the dialog
+</ParamField>
+
+<ParamField path="forceTheme" type="ThemeMode">
+  Overrides the current theme
+</ParamField>
+
+<ParamField path="classesToIgnore" type="string[]">
+  CSS class names to ignore when detecting outside clicks
+</ParamField>
+
+<ParamField path="className" type="string">
+  Custom CSS class name
+</ParamField>
+
+<ParamField path="style" type="React.CSSProperties">
+  Inline styles
+</ParamField>
+
+<ParamField path="dataTest" type="string">
+  Test identifier for e2e tests
+</ParamField>
+
+<ParamField path="closeBtnDataTest" type="string">
+  Test identifier for the close button
+</ParamField>
+
+## Examples
+
+### Delete Confirmation
+
+```tsx
+function DeleteConfirmation() {
+  const [open, setOpen] = useState(false);
+
+  const handleDelete = async () => {
+    await deleteItem();
+    setOpen(false);
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={() => setOpen(false)}
+      type={DialogType.CONFIRM}
+      title="Delete item?"
+      description="This item will be permanently deleted."
+    >
+      <ButtonGroupItem 
+        label="Cancel" 
+        onClick={() => setOpen(false)} 
+      />
+      <ButtonGroupItem 
+        label="Delete" 
+        onClick={handleDelete}
+        destructive 
+      />
+    </Dialog>
+  );
+}
+```
+
+### Form Dialog
+
+```tsx
+function FormDialog() {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+
+  const handleSave = () => {
+    saveData({ name, email });
+    setOpen(false);
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={() => setOpen(false)}
+      type={DialogType.INPUT}
+      title="Add Contact"
+      inputField={[
+        <InputField 
+          value={name} 
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Name"
+        />,
+        <InputField 
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          type={InputType.EMAIL}
+        />
+      ]}
+    >
+      <ButtonGroupItem label="Cancel" onClick={() => setOpen(false)} />
+      <ButtonGroupItem label="Save" onClick={handleSave} />
+    </Dialog>
+  );
+}
+```

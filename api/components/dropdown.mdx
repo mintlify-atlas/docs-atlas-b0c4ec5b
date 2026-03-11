@@ -1,0 +1,400 @@
+---
+title: Dropdown
+description: Dropdown menu components for displaying lists of actions and options
+---
+
+## Dropdown
+
+A dropdown menu component for displaying contextual actions and options. Supports anchoring, portals, keyboard navigation, and nested submenus.
+
+### Import
+
+```tsx
+import { Dropdown, DropdownItem } from '@skiff/nightwatch-ui';
+```
+
+### Basic Usage
+
+```tsx
+function BasicDropdown() {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const buttonRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <>
+      <IconButton
+        ref={buttonRef}
+        icon={Icon.More}
+        onClick={() => setShowDropdown(!showDropdown)}
+      />
+      <Dropdown
+        buttonRef={buttonRef}
+        showDropdown={showDropdown}
+        setShowDropdown={setShowDropdown}
+      >
+        <DropdownItem label="Edit" icon={Icon.Edit} onClick={handleEdit} />
+        <DropdownItem label="Share" icon={Icon.Share} onClick={handleShare} />
+        <DropdownItem label="Delete" icon={Icon.Trash} onClick={handleDelete} color="destructive" />
+      </Dropdown>
+    </>
+  );
+}
+```
+
+### With Search
+
+```tsx
+function SearchableDropdown() {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [search, setSearch] = useState('');
+  const buttonRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <Dropdown
+      buttonRef={buttonRef}
+      showDropdown={showDropdown}
+      setShowDropdown={setShowDropdown}
+      inputField={
+        <InputField
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          icon={Icon.Search}
+          placeholder="Search..."
+        />
+      }
+    >
+      <DropdownItem label="Option 1" onClick={handleOption1} />
+      <DropdownItem label="Option 2" onClick={handleOption2} />
+    </Dropdown>
+  );
+}
+```
+
+### Portal Mode
+
+```tsx
+<Dropdown
+  buttonRef={buttonRef}
+  showDropdown={showDropdown}
+  setShowDropdown={setShowDropdown}
+  portal // Renders in a portal for z-index control
+>
+  <DropdownItem label="Action 1" onClick={handleAction1} />
+  <DropdownItem label="Action 2" onClick={handleAction2} />
+</Dropdown>
+```
+
+### Custom Anchor Position
+
+```tsx
+<Dropdown
+  customAnchor={{ x: 100, y: 200 }}
+  showDropdown={showDropdown}
+  setShowDropdown={setShowDropdown}
+  portal
+>
+  <DropdownItem label="Context action" onClick={handleAction} />
+</Dropdown>
+```
+
+## Dropdown Props
+
+<ParamField path="showDropdown" type="boolean" default={true}>
+  Controls dropdown visibility
+</ParamField>
+
+<ParamField path="setShowDropdown" type="(open: boolean) => void" required>
+  Callback to update dropdown visibility state
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode | DropdownItemComponent[]" required>
+  Dropdown content, typically DropdownItem components
+</ParamField>
+
+<ParamField path="buttonRef" type="React.MutableRefObject<HTMLDivElement | null>">
+  Ref to the button/element that triggers the dropdown
+</ParamField>
+
+<ParamField path="customAnchor" type="{ x: number; y: number }">
+  Custom position for the dropdown instead of anchoring to a button
+</ParamField>
+
+<ParamField path="portal" type="boolean" default={false}>
+  Renders the dropdown in a React portal for better z-index control
+</ParamField>
+
+<ParamField path="inputField" type="InputComponent">
+  Input field rendered at the top of the dropdown for search/filter
+</ParamField>
+
+<ParamField path="fullWidth" type="boolean" default={false}>
+  Makes dropdown match the width of the anchor element
+</ParamField>
+
+<ParamField path="width" type="number | string">
+  Custom dropdown width
+</ParamField>
+
+<ParamField path="minWidth" type="number | string">
+  Minimum dropdown width
+</ParamField>
+
+<ParamField path="maxWidth" type="number | string">
+  Maximum dropdown width
+</ParamField>
+
+<ParamField path="maxHeight" type="number | string">
+  Maximum dropdown height. Enables scrolling when content exceeds this height
+</ParamField>
+
+<ParamField path="gapFromAnchor" type="number" default={0}>
+  Gap in pixels between the anchor and the dropdown
+</ParamField>
+
+<ParamField path="noPadding" type="boolean" default={false}>
+  Removes default padding from the dropdown
+</ParamField>
+
+<ParamField path="isSubmenu" type="boolean" default={false}>
+  Marks this dropdown as a submenu. Controls opening direction and behavior
+</ParamField>
+
+<ParamField path="keyboardNavControls" type="KeyboardNavControls">
+  Configuration for keyboard navigation support
+</ParamField>
+
+<ParamField path="zIndex" type="number">
+  Custom z-index for the dropdown
+</ParamField>
+
+<ParamField path="customBackgroundBlockerPos" type="{ top?: number; left?: number }">
+  Custom position for the background blocker element
+</ParamField>
+
+<ParamField path="clickOutsideWebListener" type="MouseClickEvents">
+  Custom mouse event type for outside click detection
+</ParamField>
+
+<ParamField path="className" type="string">
+  Custom CSS class name
+</ParamField>
+
+<ParamField path="id" type="string">
+  HTML id attribute
+</ParamField>
+
+<ParamField path="dataTest" type="string">
+  Test identifier for e2e tests
+</ParamField>
+
+## DropdownItem
+
+Individual item component within a dropdown menu.
+
+### Basic Usage
+
+```tsx
+<DropdownItem 
+  label="Edit"
+  icon={Icon.Edit}
+  onClick={handleEdit}
+/>
+```
+
+### With Icons
+
+```tsx
+<DropdownItem 
+  label="Delete"
+  icon={Icon.Trash}
+  color="destructive"
+  onClick={handleDelete}
+/>
+```
+
+### Active State
+
+```tsx
+<DropdownItem 
+  label="Option 1"
+  active={selectedOption === 'option1'}
+  onClick={() => setSelectedOption('option1')}
+/>
+```
+
+### Disabled State
+
+```tsx
+<DropdownItem 
+  label="Unavailable Action"
+  disabled
+  onClick={handleAction}
+/>
+```
+
+### Custom Elements
+
+```tsx
+<DropdownItem 
+  label="Custom"
+  startElement={<CustomIcon />}
+  endElement={<Badge count={5} />}
+  onClick={handleClick}
+/>
+```
+
+## DropdownItem Props
+
+<ParamField path="label" type="React.ReactNode" required>
+  Text or content to display in the dropdown item
+</ParamField>
+
+<ParamField path="onClick" type="(e?: React.MouseEvent) => void | Promise<void>">
+  Callback fired when the item is clicked
+</ParamField>
+
+<ParamField path="icon" type="Icon | IconComponent">
+  Icon displayed at the start of the item
+</ParamField>
+
+<ParamField path="color" type="DropdownItemColor" default="primary">
+  Content color. Options:
+  - `"primary"` - Default primary color
+  - `"destructive"` - Red/destructive color for dangerous actions
+</ParamField>
+
+<ParamField path="active" type="boolean" default={false}>
+  Shows a check mark to indicate active/selected state
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default={false}>
+  Disables the item, preventing clicks and showing disabled state
+</ParamField>
+
+<ParamField path="size" type="DropdownItemSize" default="Size.MEDIUM">
+  Item size. Options: `Size.MEDIUM`, `Size.LARGE`
+</ParamField>
+
+<ParamField path="highlight" type="boolean">
+  Controls hover/highlight state. Used for keyboard navigation
+</ParamField>
+
+<ParamField path="scrollIntoView" type="boolean" default={false}>
+  Automatically scrolls this item into view
+</ParamField>
+
+<ParamField path="startElement" type="JSX.Element">
+  Custom element displayed at the start of the item
+</ParamField>
+
+<ParamField path="endElement" type="JSX.Element">
+  Custom element displayed at the end of the item
+</ParamField>
+
+<ParamField path="showEndElement" type="boolean">
+  Controls visibility of the end element. Defaults to `true` if endElement is provided (on desktop)
+</ParamField>
+
+<ParamField path="customLabel" type="JSX.Element">
+  Custom JSX to replace the default label rendering
+</ParamField>
+
+<ParamField path="hideDivider" type="boolean">
+  Hides the bottom divider on mobile
+</ParamField>
+
+<ParamField path="noPadding" type="boolean" default={false}>
+  Removes default padding from the item
+</ParamField>
+
+<ParamField path="onHover" type="() => void">
+  Callback fired when the item is hovered
+</ParamField>
+
+<ParamField path="value" type="string">
+  Optional value associated with the item
+</ParamField>
+
+<ParamField path="dataTest" type="string">
+  Test identifier for e2e tests
+</ParamField>
+
+## Examples
+
+### Context Menu
+
+```tsx
+function ContextMenu() {
+  const [showMenu, setShowMenu] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setPosition({ x: e.clientX, y: e.clientY });
+    setShowMenu(true);
+  };
+
+  return (
+    <>
+      <div onContextMenu={handleContextMenu}>
+        Right-click me
+      </div>
+      <Dropdown
+        customAnchor={position}
+        showDropdown={showMenu}
+        setShowDropdown={setShowMenu}
+        portal
+      >
+        <DropdownItem label="Copy" icon={Icon.Copy} onClick={handleCopy} />
+        <DropdownItem label="Paste" icon={Icon.Paste} onClick={handlePaste} />
+        <DropdownItem label="Delete" icon={Icon.Trash} color="destructive" onClick={handleDelete} />
+      </Dropdown>
+    </>
+  );
+}
+```
+
+### Selection Menu
+
+```tsx
+function SelectionMenu() {
+  const [selected, setSelected] = useState('option1');
+  const [showMenu, setShowMenu] = useState(false);
+  const buttonRef = useRef<HTMLDivElement>(null);
+
+  const options = [
+    { value: 'option1', label: 'Option 1', icon: Icon.File },
+    { value: 'option2', label: 'Option 2', icon: Icon.Folder },
+    { value: 'option3', label: 'Option 3', icon: Icon.Archive }
+  ];
+
+  return (
+    <>
+      <Button
+        ref={buttonRef}
+        onClick={() => setShowMenu(!showMenu)}
+      >
+        {options.find(o => o.value === selected)?.label}
+      </Button>
+      <Dropdown
+        buttonRef={buttonRef}
+        showDropdown={showMenu}
+        setShowDropdown={setShowMenu}
+      >
+        {options.map(option => (
+          <DropdownItem
+            key={option.value}
+            label={option.label}
+            icon={option.icon}
+            active={selected === option.value}
+            onClick={() => {
+              setSelected(option.value);
+              setShowMenu(false);
+            }}
+          />
+        ))}
+      </Dropdown>
+    </>
+  );
+}
+```

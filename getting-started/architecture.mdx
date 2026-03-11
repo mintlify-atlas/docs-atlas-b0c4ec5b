@@ -1,0 +1,362 @@
+---
+title: Architecture
+description: Understanding the Skiff system architecture
+---
+
+Skiff is a privacy-first, end-to-end encrypted workspace platform built as a monorepo containing multiple applications and shared libraries.
+
+## Overview
+
+Skiff provides end-to-end encrypted communication and productivity tools:
+
+- **Skiff Mail** - Private, encrypted email
+- **Skiff Calendar** - Encrypted calendar and scheduling
+- **Skiff Pages** - Encrypted document editing
+- **Skiff Drive** - Encrypted file storage
+
+All messages, events, files, and documents are end-to-end encrypted. Skiff never stores unencrypted access to user data.
+
+## Monorepo Structure
+
+The project uses Yarn workspaces to manage a monorepo containing multiple applications and shared libraries.
+
+### Workspace Configuration
+
+The root `package.json` defines the workspace structure:
+
+```json
+{
+  "workspaces": [
+    "libs",
+    "skemail-web",
+    "calendar-web",
+    "skiff-pages-drive",
+    "skiff-calendar"
+  ]
+}
+```
+
+### Applications
+
+<AccordionGroup>
+  <Accordion title="skemail-web" icon="envelope">
+    The Skiff Mail web application built with Next.js and React.
+
+    **Key Features:**
+    - End-to-end encrypted email
+    - Rich text editor with TipTap
+    - File attachments
+    - Email search
+    - Custom domains and aliases
+
+    **Port:** 4200
+
+    **Entry Point:** http://localhost:4200/mail/inbox
+  </Accordion>
+
+  <Accordion title="calendar-web" icon="calendar">
+    The Skiff Calendar web application for encrypted scheduling.
+
+    **Key Features:**
+    - End-to-end encrypted events
+    - Google Calendar import
+    - ICS file support
+    - Event sharing
+    - Timezone support
+
+    **Technology:** React with Webpack
+  </Accordion>
+
+  <Accordion title="skiff-pages-drive" icon="file">
+    Combined application for Skiff Pages (documents) and Drive (file storage).
+
+    **Key Features:**
+    - End-to-end encrypted documents
+    - Collaborative editing
+    - File storage and management
+    - Version history
+  </Accordion>
+</AccordionGroup>
+
+### Shared Libraries
+
+The `libs/` directory contains shared libraries used across all applications:
+
+<AccordionGroup>
+  <Accordion title="skiff-crypto" icon="lock">
+    Core cryptography library implementing Skiff's encryption model.
+
+    **Responsibilities:**
+    - End-to-end encryption
+    - Key generation and management
+    - Cryptographic operations
+  </Accordion>
+
+  <Accordion title="skiff-crypto-v2" icon="shield">
+    Next-generation cryptography library with enhanced features.
+  </Accordion>
+
+  <Accordion title="skiff-utils" icon="wrench">
+    Common utilities and helper functions shared across applications.
+
+    **Includes:**
+    - Type definitions
+    - Utility functions
+    - Constants and configurations
+  </Accordion>
+
+  <Accordion title="skiff-front-utils" icon="browser">
+    Frontend-specific utilities and hooks.
+
+    **Includes:**
+    - React hooks
+    - Frontend utilities
+    - UI helpers
+  </Accordion>
+
+  <Accordion title="skiff-graphql" icon="diagram-project">
+    GraphQL schema definitions and resolvers.
+  </Accordion>
+
+  <Accordion title="skiff-front-graphql" icon="code">
+    Frontend GraphQL client setup and generated types.
+  </Accordion>
+
+  <Accordion title="skiff-mail-protos" icon="message">
+    Protocol Buffer definitions for mail data structures.
+  </Accordion>
+
+  <Accordion title="skiff-ics" icon="calendar-days">
+    ICS (iCalendar) file format parsing and generation.
+  </Accordion>
+
+  <Accordion title="skiff-front-search" icon="magnifying-glass">
+    Private search indexing library for client-side search.
+
+    Read more in [Skiff's blog post on private search](https://skiff.com/blog/private-search).
+  </Accordion>
+
+  <Accordion title="skiff-prosemirror" icon="text">
+    ProseMirror editor extensions and utilities.
+  </Accordion>
+
+  <Accordion title="nightwatch-ui" icon="palette">
+    Reusable UI component library for the Skiff design system.
+  </Accordion>
+</AccordionGroup>
+
+### Build Order
+
+Libraries must be built in dependency order:
+
+1. `skiff-utils`
+2. `skiff-mail-protos`
+3. `skiff-graphql`
+4. `skiff-crypto`
+5. `skiff-front-graphql`
+6. `skiff-front-utils`
+
+The `yarn build:lib` command handles this automatically.
+
+## Technology Stack
+
+### Frontend Framework
+
+- **React** 17.0.2 - UI framework
+- **Next.js** 12.x - Framework for skemail-web (file-based routing, SSR)
+- **Webpack** 5.x - Module bundler for calendar-web and other apps
+- **TypeScript** 5.0+ - Type-safe JavaScript
+
+### State Management
+
+- **Redux Toolkit** - Application state management
+- **React Redux** - React bindings for Redux
+- **Redux Logger** - Development logging
+
+### GraphQL
+
+- **Apollo Client** 3.x - GraphQL client
+- **GraphQL Code Generator** - Type-safe GraphQL operations
+- **apollo-upload-client** - File upload support
+
+### UI and Styling
+
+- **styled-components** 5.3.3 - CSS-in-JS styling
+- **Emotion** - Additional styling solution
+- **Material-UI** (@mui/material) - Component library
+- **Framer Motion** - Animation library
+
+### Rich Text Editing
+
+- **TipTap** 2.x - Rich text editor framework
+- **ProseMirror** - Editor foundation
+
+Extensions include:
+- Bold, italic, underline, strike
+- Headings, lists, blockquotes
+- Links, images, tables
+- Syntax highlighting
+
+### Cryptography
+
+- **tweetnacl** - Cryptographic primitives
+- **@stablelib/chacha20poly1305** - Authenticated encryption
+- **argon2-browser** - Password hashing
+- **ethers** - Ethereum wallet integration
+
+### Data Formats
+
+- **Protocol Buffers** (protobufjs) - Efficient serialization
+- **GraphQL** - API query language
+- **ICS** - Calendar format
+
+### Testing
+
+- **Jest** 28.x - Test framework
+- **@testing-library/react** - React component testing
+- **@swc/jest** - Fast test compilation
+
+### Development Tools
+
+- **ESLint** - Code linting
+- **Prettier** - Code formatting
+- **Babel** - JavaScript transpilation
+- **Webpack Dev Server** - Development server with HMR
+
+## Cryptography Architecture
+
+Skiff implements client-side, end-to-end encryption for all user data.
+
+### Encryption Model
+
+<Steps>
+  <Step title="Key Generation">
+    Users generate encryption keys locally in the browser. Private keys never leave the client.
+  </Step>
+
+  <Step title="Data Encryption">
+    All sensitive data (emails, calendar events, files, documents) is encrypted client-side before being sent to servers.
+  </Step>
+
+  <Step title="Zero-Knowledge Storage">
+    Servers store only encrypted data. Skiff cannot decrypt user data.
+  </Step>
+
+  <Step title="Secure Sharing">
+    Encrypted data can be shared between users using public key cryptography.
+  </Step>
+</Steps>
+
+### Cryptographic Libraries
+
+The cryptography layer is implemented in:
+
+- `libs/skiff-crypto` - Original crypto implementation
+- `libs/skiff-crypto-v2` - Enhanced crypto features
+
+These libraries handle:
+
+- Key generation and derivation
+- Symmetric encryption (ChaCha20-Poly1305)
+- Asymmetric encryption (TweetNaCl)
+- Password hashing (Argon2)
+- Secure random number generation
+
+For more details, read [Skiff's whitepaper](https://skiff.com/whitepaper).
+
+## GraphQL Architecture
+
+### Schema Federation
+
+Skiff uses Apollo Federation to compose multiple GraphQL services into a unified graph. The `supergraph.graphql` file contains the federated schema.
+
+### Code Generation
+
+GraphQL Code Generator creates TypeScript types from:
+
+- GraphQL schema definitions
+- GraphQL query/mutation operations
+- Fragment definitions
+
+This provides end-to-end type safety from API to UI.
+
+### Client Configuration
+
+Apollo Client is configured with:
+
+- HTTP link for GraphQL requests
+- Upload link for file uploads
+- Cache for query optimization
+- Error handling and retry logic
+
+## Search Architecture
+
+Skiff implements private, client-side search using the `skiff-front-search` library.
+
+### How It Works
+
+1. **Indexing**: Data is decrypted and indexed locally in the browser
+2. **Search**: Queries run against the local index using MiniSearch
+3. **Privacy**: Search never sends queries or data to servers
+
+### Features
+
+- Full-text search
+- Fuzzy matching
+- Prefix search
+- Result ranking
+
+Read more in [Skiff's blog post on private search](https://skiff.com/blog/private-search).
+
+## Package Management
+
+Skiff uses **Yarn Berry** (Yarn 4.0.1) with workspaces:
+
+```json
+"packageManager": "yarn@4.0.1"
+```
+
+### Workspace Features
+
+- **Dependency Hoisting**: Shared dependencies are installed once at the root
+- **Local Linking**: Libraries are automatically linked to applications
+- **Parallel Execution**: Scripts can run across workspaces in parallel
+- **Topological Sorting**: Dependencies are built in the correct order
+
+## Build and Deployment
+
+### Development
+
+- **Webpack Dev Server**: Fast development server with HMR
+- **Source Maps**: For debugging
+- **Mock Data**: Local development uses mock data
+
+### Production
+
+- **Webpack**: Production builds with optimization
+- **Code Splitting**: Automatic code splitting for better performance
+- **Minification**: Using Terser and CSS minimizer
+- **Compression**: Gzip compression for assets
+- **Service Workers**: Workbox for offline support
+
+### Vercel Integration
+
+Skiff applications can be deployed to Vercel:
+
+```bash
+yarn build-vercel
+```
+
+This uses the Vercel build configuration with environment variables.
+
+## Security Model
+
+Skiff's security model is based on:
+
+1. **End-to-End Encryption**: All data encrypted client-side
+2. **Zero-Knowledge**: Servers cannot decrypt user data
+3. **Open Source**: Code is publicly auditable
+4. **Privacy-First**: No tracking or analytics on user data
+5. **Crypto Wallet Support**: Anonymous sign-up with Ethereum wallets
+
+Read more at [skiff.com/security-model](https://skiff.com/security-model).

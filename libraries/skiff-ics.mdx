@@ -1,0 +1,498 @@
+---
+title: "skiff-ics"
+description: "ICS calendar file parsing and generation"
+---
+
+## Overview
+
+`skiff-ics` provides utilities for parsing and generating ICS (iCalendar) files, enabling calendar event import/export functionality in Skiff Calendar.
+
+**Package**: `skiff-ics`  
+**Source**: `libs/skiff-ics/`
+
+## Key Features
+
+- Parse ICS files from external calendar applications
+- Generate ICS files for calendar event sharing
+- Support for recurring events (RRULE)
+- Timezone handling and conversion
+- Attendee management and RSVP status
+- Conference link extraction
+- Reminders and alarms
+
+## Parsing ICS Files
+
+Located in `libs/skiff-ics/src/parse.ts`
+
+### Basic Parsing
+
+```typescript
+import { parseICS, ParsedEvent } from 'skiff-ics';
+
+// Parse ICS file content
+const icsContent = `
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Example Corp//Example Calendar//EN
+BEGIN:VEVENT
+UID:event-123@example.com
+DTSTART:20240415T100000Z
+DTEND:20240415T110000Z
+SUMMARY:Team Meeting
+DESCRIPTION:Weekly sync meeting
+LOCATION:Conference Room A
+END:VEVENT
+END:VCALENDAR
+`;
+
+const result = parseICS(icsContent);
+
+// Access parsed events
+const { events, errors, method } = result;
+
+events.forEach((event: ParsedEvent) => {
+  console.log(event.title);        // "Team Meeting"
+  console.log(event.startDate);    // Dayjs object
+  console.log(event.endDate);      // Dayjs object
+  console.log(event.description);  // "Weekly sync meeting"
+  console.log(event.location);     // "Conference Room A"
+});
+```
+
+Source: `libs/skiff-ics/src/parse.ts:1`
+
+### ParsedEvent Interface
+
+```typescript
+import type { ParsedEvent, ParsedAttendee } from 'skiff-ics';
+
+interface ParsedEvent {
+  id: string;                          // Unique event ID
+  startDate: Dayjs;                    // Start time
+  endDate: Dayjs;                      // End time
+  title: string;                       // Event title
+  description: string;                 // Event description
+  location: string;                    // Location
+  status: EventStatus;                 // CONFIRMED, TENTATIVE, CANCELLED
+  organizer?: ParsedOrganizer;         // Event organizer
+  attendees: ParsedAttendee[];         // Event attendees
+  reminders?: EventReminder[];         // Alarms/reminders
+  recurrenceRule?: RecurrenceRule;     // Recurrence pattern
+  recurrenceId?: Dayjs;                // For modified instances
+  recurrences?: ParsedEvent[];         // Override instances
+  conference?: string;                 // Conference URL
+  sequence: number;                    // Update sequence number
+  method: CalendarMethodTypes;         // REQUEST, REPLY, CANCEL, etc.
+  icsCreationDate?: Dayjs;             // When ICS was created
+  creationDate?: Dayjs;                // When event was created
+  lastModifiedDate?: Dayjs;            // Last modification time
+}
+```
+
+Source: `libs/skiff-ics/src/parse.ts:38`
+
+### Parsing with Attendees
+
+```typescript
+import { parseICS } from 'skiff-ics';
+
+const { events } = parseICS(icsWithAttendees);
+
+const event = events[0];
+
+// Access organizer
+console.log(event.organizer?.name);   // "John Doe"
+console.log(event.organizer?.value);  // "mailto:john@example.com"
+
+// Access attendees
+event.attendees.forEach(attendee => {
+  console.log(attendee.name);         // Attendee name
+  console.log(attendee.email);        // Email address
+  console.log(attendee.status);       // ACCEPTED, DECLINED, TENTATIVE, NEEDS-ACTION
+  console.log(attendee.role);         // CHAIR, REQ-PARTICIPANT, OPT-PARTICIPANT
+  console.log(attendee.optional);     // true/false
+});
+```
+
+Source: `libs/skiff-ics/src/parse.ts:96`
+
+### Parsing Recurring Events
+
+```typescript
+import { parseICS, RecurrenceRule } from 'skiff-ics';
+
+const { events } = parseICS(icsWithRecurrence);
+
+const event = events[0];
+
+if (event.recurrenceRule) {
+  const rrule = event.recurrenceRule;
+  
+  // Access recurrence pattern
+  console.log(rrule.frequency);      // DAILY, WEEKLY, MONTHLY, YEARLY
+  console.log(rrule.interval);       // Repeat every N periods
+  console.log(rrule.count);          // Number of occurrences
+  console.log(rrule.until);          // End date
+  console.log(rrule.byDay);          // Days of week (MO, TU, etc.)
+  console.log(rrule.byMonthDay);     // Days of month
+  
+  // Convert to RRule string
+  const rruleString = rrule.toString();
+  // "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE,FR"
+}
+```
+
+Source: `libs/skiff-ics/src/RecurrenceRule.ts:1`
+
+### Error Handling
+
+```typescript
+import { parseICS } from 'skiff-ics';
+
+const result = parseICS(icsContent);
+
+// Check for parsing errors
+if (result.errors.length > 0) {
+  result.errors.forEach(error => {
+    console.error(`Error parsing event ${error.id}:`, error.error);
+    console.error('Component:', error.component);
+  });
+}
+
+// Successfully parsed events are still available
+console.log(`Parsed ${result.events.length} events successfully`);
+```
+
+Source: `libs/skiff-ics/src/parse.ts:32`
+
+## Generating ICS Files
+
+Located in `libs/skiff-ics/src/generate.ts`
+
+### Basic Generation
+
+```typescript
+import { generateICS, GenerateEvent, GenerateAttendee } from 'skiff-ics';
+import { AttendeeStatus, AttendeePermission } from 'skiff-graphql';
+
+// Define event
+const event: GenerateEvent = {
+  title: 'Team Meeting',
+  description: 'Weekly sync meeting',
+  startDate: Date.now(),
+  endDate: Date.now() + 3600000, // 1 hour later
+  externalID: 'event-123',
+  location: 'Conference Room A',
+  isAllDay: false,
+  attendees: [],
+  updatedAt: Date.now(),
+  sequence: 0
+};
+
+// Generate ICS content
+const icsContent = generateICS(
+  event,
+  'organizer@example.com',   // Organizer email
+  'REQUEST'                   // Calendar method
+);
+
+// icsContent is a string that can be saved to a .ics file
+// or sent as an email attachment
+```
+
+Source: `libs/skiff-ics/src/generate.ts:1`
+
+### Event with Attendees
+
+```typescript
+import { 
+  generateICS, 
+  GenerateEvent, 
+  GenerateAttendee 
+} from 'skiff-ics';
+import { AttendeeStatus, AttendeePermission } from 'skiff-graphql';
+
+const attendees: GenerateAttendee[] = [
+  {
+    email: 'alice@example.com',
+    displayName: 'Alice Smith',
+    attendeeStatus: AttendeeStatus.Yes,
+    permission: AttendeePermission.Read,
+    optional: false
+  },
+  {
+    email: 'bob@example.com',
+    displayName: 'Bob Jones',
+    attendeeStatus: AttendeeStatus.Pending,
+    permission: AttendeePermission.Read,
+    optional: true
+  }
+];
+
+const event: GenerateEvent = {
+  title: 'Project Kickoff',
+  startDate: Date.now(),
+  endDate: Date.now() + 7200000, // 2 hours
+  externalID: 'project-kickoff-1',
+  attendees,
+  updatedAt: Date.now(),
+  sequence: 0
+};
+
+const ics = generateICS(event, 'organizer@example.com', 'REQUEST');
+```
+
+Source: `libs/skiff-ics/src/generate.ts:30`
+
+### All-Day Events
+
+```typescript
+import { generateICS, GenerateEvent } from 'skiff-ics';
+
+const allDayEvent: GenerateEvent = {
+  title: 'Company Holiday',
+  startDate: new Date('2024-07-04').getTime(),
+  endDate: new Date('2024-07-05').getTime(),
+  externalID: 'holiday-july4',
+  isAllDay: true,  // Mark as all-day event
+  attendees: [],
+  updatedAt: Date.now(),
+  sequence: 0
+};
+
+const ics = generateICS(allDayEvent, 'hr@example.com', 'PUBLISH');
+```
+
+Source: `libs/skiff-ics/src/generate.ts:38`
+
+### Recurring Events
+
+```typescript
+import { generateICS, GenerateEvent, RecurrenceRule } from 'skiff-ics';
+import { RRule } from 'rrule';
+
+// Create recurrence rule for weekly meeting
+const rrule = new RecurrenceRule({
+  freq: RRule.WEEKLY,
+  interval: 1,
+  byweekday: [RRule.MO, RRule.WE, RRule.FR],
+  count: 10  // 10 occurrences
+});
+
+const recurringEvent: GenerateEvent = {
+  title: 'Daily Standup',
+  startDate: Date.now(),
+  endDate: Date.now() + 900000, // 15 minutes
+  externalID: 'standup-recurring',
+  recurrenceRule: rrule,
+  attendees: [],
+  updatedAt: Date.now(),
+  sequence: 0
+};
+
+const ics = generateICS(recurringEvent, 'scrum-master@example.com', 'REQUEST');
+```
+
+Source: `libs/skiff-ics/src/generate.ts:50`
+
+### Conference Links
+
+```typescript
+import { generateICS, GenerateEvent } from 'skiff-ics';
+
+const eventWithConference: GenerateEvent = {
+  title: 'Virtual Meeting',
+  startDate: Date.now(),
+  endDate: Date.now() + 3600000,
+  externalID: 'virtual-meeting-1',
+  location: 'Online',
+  conference: 'https://meet.example.com/abc-def-ghi',
+  attendees: [],
+  updatedAt: Date.now(),
+  sequence: 0
+};
+
+const ics = generateICS(eventWithConference, 'host@example.com', 'REQUEST');
+// Conference link will be included in the ICS file
+```
+
+Source: `libs/skiff-ics/src/generate.ts:87`
+
+## Recurrence Rules
+
+Located in `libs/skiff-ics/src/RecurrenceRule.ts`
+
+### Creating Recurrence Rules
+
+```typescript
+import { RecurrenceRule, MAX_RECURRENCE_COUNT } from 'skiff-ics';
+import { RRule } from 'rrule';
+
+// Daily recurrence
+const daily = new RecurrenceRule({
+  freq: RRule.DAILY,
+  interval: 1,
+  count: 30
+});
+
+// Weekly on specific days
+const weekly = new RecurrenceRule({
+  freq: RRule.WEEKLY,
+  interval: 2,  // Every 2 weeks
+  byweekday: [RRule.TU, RRule.TH]
+});
+
+// Monthly on specific day
+const monthly = new RecurrenceRule({
+  freq: RRule.MONTHLY,
+  interval: 1,
+  bymonthday: [15]  // 15th of each month
+});
+
+// Until specific date
+const untilDate = new RecurrenceRule({
+  freq: RRule.WEEKLY,
+  interval: 1,
+  until: new Date('2024-12-31')
+});
+
+// Maximum recurrence count
+console.log(MAX_RECURRENCE_COUNT);  // Safety limit
+```
+
+Source: `libs/skiff-ics/src/RecurrenceRule.ts:1`
+
+## Utilities
+
+Located in `libs/skiff-ics/src/utils.ts`
+
+```typescript
+import { isAllDay, convertReminderToUTC } from 'skiff-ics';
+
+// Check if event is all-day
+const allDay = isAllDay(startDate, endDate);
+
+// Convert reminder to UTC
+const utcReminder = convertReminderToUTC(reminder, timezone);
+```
+
+Source: `libs/skiff-ics/src/utils.ts:1`
+
+## Calendar Method Types
+
+```typescript
+import type { CalendarMethodTypes } from 'skiff-ics';
+
+// Supported calendar methods:
+// - REQUEST: Initial invitation
+// - REPLY: Response to invitation
+// - CANCEL: Event cancellation
+// - PUBLISH: Published event (no RSVP needed)
+// - REFRESH: Request for update
+// - COUNTER: Counter-proposal
+// - DECLINECOUNTER: Reject counter-proposal
+```
+
+Source: `libs/skiff-ics/src/types.ts:1`
+
+## Complete Example: Import/Export Flow
+
+```typescript
+import { 
+  parseICS, 
+  generateICS, 
+  ParsedEvent,
+  GenerateEvent 
+} from 'skiff-ics';
+
+// Import ICS file
+async function importCalendarFile(file: File) {
+  const content = await file.text();
+  const { events, errors } = parseICS(content);
+  
+  if (errors.length > 0) {
+    console.error('Some events failed to parse:', errors);
+  }
+  
+  // Save events to database
+  for (const event of events) {
+    await saveEventToDatabase({
+      title: event.title,
+      startDate: event.startDate.toDate(),
+      endDate: event.endDate.toDate(),
+      description: event.description,
+      location: event.location,
+      attendees: event.attendees,
+      recurrenceRule: event.recurrenceRule
+    });
+  }
+  
+  return events;
+}
+
+// Export event as ICS
+function exportEvent(event: Event): string {
+  const generateEvent: GenerateEvent = {
+    title: event.title,
+    description: event.description,
+    startDate: event.startDate.getTime(),
+    endDate: event.endDate.getTime(),
+    externalID: event.id,
+    location: event.location,
+    conference: event.conferenceLink,
+    attendees: event.attendees.map(a => ({
+      email: a.email,
+      displayName: a.name,
+      attendeeStatus: a.status,
+      permission: a.permission,
+      optional: a.optional
+    })),
+    updatedAt: event.updatedAt.getTime(),
+    sequence: event.sequence || 0
+  };
+  
+  return generateICS(generateEvent, event.organizerEmail, 'REQUEST');
+}
+
+// Download ICS file
+function downloadICS(event: Event) {
+  const icsContent = exportEvent(event);
+  const blob = new Blob([icsContent], { type: 'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${event.title}.ics`;
+  a.click();
+  
+  URL.revokeObjectURL(url);
+}
+```
+
+## Installation
+
+This is a workspace package:
+
+```json
+{
+  "dependencies": {
+    "skiff-ics": "workspace:libs/skiff-ics"
+  }
+}
+```
+
+## Key Dependencies
+
+- **ical**: ICS file parsing
+- **ical-generator**: ICS file generation
+- **rrule**: Recurrence rule handling
+- **dayjs**: Date manipulation
+- **windows-iana**: Timezone conversion
+- **zod**: Schema validation
+- **skiff-graphql**: GraphQL types
+- **skiff-utils**: Shared utilities
+
+## Related Libraries
+
+- [skiff-graphql](/libraries/skiff-graphql) - GraphQL types for events
+- [skiff-utils](/libraries/skiff-utils) - Date and validation utilities

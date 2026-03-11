@@ -1,0 +1,263 @@
+---
+title: InputField
+description: Text input components for capturing user input
+---
+
+## InputField
+
+A flexible input component for text entry with support for icons, validation, and various input types.
+
+### Import
+
+```tsx
+import { InputField, TextArea, InputType } from '@skiff/nightwatch-ui';
+```
+
+### Basic Usage
+
+```tsx
+<InputField
+  value={value}
+  onChange={(e) => setValue(e.target.value)}
+  placeholder="Enter text..."
+/>
+```
+
+### With Icon
+
+```tsx
+<InputField
+  icon={Icon.Search}
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  placeholder="Search..."
+/>
+```
+
+### Input Types
+
+```tsx
+// Email input
+<InputField
+  type={InputType.EMAIL}
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  placeholder="email@example.com"
+/>
+
+// Password input
+<InputField
+  type={InputType.PASSWORD}
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  placeholder="Enter password"
+/>
+
+// Number input
+<InputField
+  type={InputType.NUMBER}
+  value={count}
+  onChange={(e) => setCount(e.target.value)}
+  placeholder="0"
+/>
+```
+
+### With Validation
+
+```tsx
+<InputField
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  error={emailError}
+  helperText="Enter a valid email address"
+/>
+```
+
+### Variants
+
+```tsx
+// Default variant
+<InputField variant={InputFieldVariant.DEFAULT} />
+
+// Ghost variant (no background)
+<InputField variant={InputFieldVariant.GHOST} />
+
+// Search variant
+<InputField variant={InputFieldVariant.SEARCH} />
+```
+
+### Sizes
+
+```tsx
+<InputField size={Size.X_SMALL} placeholder="Extra small" />
+<InputField size={Size.SMALL} placeholder="Small" />
+<InputField size={Size.MEDIUM} placeholder="Medium" />
+<InputField size={Size.LARGE} placeholder="Large" />
+```
+
+### With End Adornment
+
+```tsx
+<InputField
+  value={value}
+  onChange={handleChange}
+  endAdornment={<IconButton icon={Icon.Close} onClick={clearInput} />}
+/>
+```
+
+## InputField Props
+
+<ParamField path="value" type="string">
+  Controlled input value
+</ParamField>
+
+<ParamField path="onChange" type="(e: React.ChangeEvent<HTMLInputElement>) => void">
+  Callback fired when input value changes
+</ParamField>
+
+<ParamField path="placeholder" type="string">
+  Placeholder text displayed when input is empty
+</ParamField>
+
+<ParamField path="type" type="InputType" default="InputType.DEFAULT">
+  Input type. Options:
+  - `InputType.DEFAULT` - Normal text input
+  - `InputType.EMAIL` - Email input with email keyboard
+  - `InputType.NUMBER` - Numeric input with number keyboard
+  - `InputType.PASSWORD` - Password input with hidden text
+</ParamField>
+
+<ParamField path="icon" type="Icon">
+  Icon displayed at the start of the input field
+</ParamField>
+
+<ParamField path="endAdornment" type="Icon | React.ReactNode | React.ReactNode[]">
+  Content displayed at the end of the input field (icons, buttons, etc.)
+</ParamField>
+
+<ParamField path="size" type="InputFieldSize" default="Size.MEDIUM">
+  Input field size. Options: `Size.X_SMALL`, `Size.SMALL`, `Size.MEDIUM`, `Size.LARGE`
+</ParamField>
+
+<ParamField path="variant" type="InputFieldVariant" default="InputFieldVariant.DEFAULT">
+  Visual variant. Options:
+  - `InputFieldVariant.DEFAULT` - Standard input with background
+  - `InputFieldVariant.GHOST` - No background or padding
+  - `InputFieldVariant.SEARCH` - Optimized for search
+</ParamField>
+
+<ParamField path="error" type="boolean | string">
+  Error state. Pass `true` for error styling, or a string to show an error message
+</ParamField>
+
+<ParamField path="helperText" type="string">
+  Helpful context text displayed below the input
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default={false}>
+  Disables the input field
+</ParamField>
+
+<ParamField path="readOnly" type="boolean" default={false}>
+  Makes the input read-only (not editable but focusable)
+</ParamField>
+
+<ParamField path="active" type="boolean">
+  Controlled active/focused state
+</ParamField>
+
+<ParamField path="autoFocus" type="boolean">
+  Automatically focuses the input on mount
+</ParamField>
+
+<ParamField path="autoComplete" type="string">
+  HTML autocomplete attribute value
+</ParamField>
+
+<ParamField path="borderRadius" type="number">
+  Custom border radius in pixels
+</ParamField>
+
+<ParamField path="caretColor" type="IconColor">
+  Color of the text cursor
+</ParamField>
+
+<ParamField path="weight" type="TypographyWeight">
+  Font weight for the input text
+</ParamField>
+
+<ParamField path="typographySize" type="TypographySize">
+  Custom typography size override
+</ParamField>
+
+<ParamField path="forceTheme" type="ThemeMode">
+  Overrides the current theme
+</ParamField>
+
+<ParamField path="innerRef" type="React.Ref<HTMLInputElement>">
+  Ref passed to the inner input element
+</ParamField>
+
+<ParamField path="onFocus" type="(e: React.FocusEvent<HTMLInputElement>) => void">
+  Callback fired when input receives focus
+</ParamField>
+
+<ParamField path="onBlur" type="(e: React.FocusEvent<HTMLInputElement>) => void">
+  Callback fired when input loses focus
+</ParamField>
+
+<ParamField path="onKeyDown" type="(e: React.KeyboardEvent<HTMLInputElement>) => void">
+  Callback fired on key down events
+</ParamField>
+
+<ParamField path="onKeyPress" type="(e: React.KeyboardEvent<HTMLInputElement>) => void">
+  Callback fired on key press events
+</ParamField>
+
+<ParamField path="onPaste" type="React.ClipboardEventHandler<HTMLInputElement>">
+  Callback fired when content is pasted
+</ParamField>
+
+<ParamField path="onClick" type="(e: React.MouseEvent) => void">
+  Callback fired when input is clicked
+</ParamField>
+
+<ParamField path="onMouseEnter" type="MouseEventHandler<HTMLInputElement>">
+  Callback fired when mouse enters the input
+</ParamField>
+
+<ParamField path="onMouseLeave" type="MouseEventHandler<HTMLInputElement>">
+  Callback fired when mouse leaves the input
+</ParamField>
+
+<ParamField path="className" type="string">
+  Custom CSS class name
+</ParamField>
+
+<ParamField path="style" type="React.CSSProperties">
+  Inline styles
+</ParamField>
+
+<ParamField path="id" type="string">
+  HTML id attribute
+</ParamField>
+
+<ParamField path="dataTest" type="string">
+  Test identifier for e2e tests
+</ParamField>
+
+## TextArea
+
+A multi-line text input component for longer text content.
+
+### Basic Usage
+
+```tsx
+<TextArea
+  value={description}
+  onChange={(e) => setDescription(e.target.value)}
+  placeholder="Enter description..."
+/>
+```
+
+TextArea shares the same props as InputField, with support for multi-line text editing.

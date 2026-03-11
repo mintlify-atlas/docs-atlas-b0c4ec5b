@@ -1,0 +1,616 @@
+---
+title: Testing
+description: Testing strategies, tools, and best practices for Skiff applications
+icon: 'flask'
+---
+
+## Overview
+
+Skiff uses a comprehensive testing stack built on **Jest** and **React Testing Library** to ensure code quality and reliability across all applications.
+
+<Info>
+  The project uses Jest 28.1.1 with SWC for fast compilation, replacing the traditional Babel setup.
+</Info>
+
+## Testing Stack
+
+### Core Tools
+
+<CardGroup cols={2}>
+  <Card title="Jest" icon="vial">
+    **Version**: 28.1.1
+    
+    Test runner and assertion library with built-in mocking and coverage reporting.
+  </Card>
+
+  <Card title="SWC" icon="bolt">
+    **Version**: 0.2.15 (@swc/jest)
+    
+    Fast TypeScript/JavaScript compiler that replaces Babel for faster test execution.
+  </Card>
+
+  <Card title="React Testing Library" icon="react">
+    **Version**: 12.1.2
+    
+    Testing utilities that encourage best practices by testing components as users interact with them.
+  </Card>
+
+  <Card title="jest-dom" icon="check-circle">
+    **Version**: 5.16.2
+    
+    Custom matchers for asserting on DOM nodes (e.g., `toBeInTheDocument()`).
+  </Card>
+</CardGroup>
+
+### Additional Libraries
+
+- **@testing-library/react-hooks** (7.0.2): Test React hooks in isolation
+- **@testing-library/user-event** (14.1.1): Simulate user interactions
+- **@testing-library/dom** (8.13.0): DOM testing utilities
+- **jest-environment-jsdom** (28.1.1): Browser-like environment for tests
+- **jest-canvas-mock** (2.4.0): Mock canvas API for skemail-web
+- **fake-indexeddb** (4.0.0): Mock IndexedDB for calendar-web tests
+- **msw** (0.48.0): Mock Service Worker for API mocking (calendar-web)
+
+## Running Tests
+
+### Application-Level Tests
+
+Each application has its own test suite:
+
+<Tabs>
+  <Tab title="skemail-web">
+    ```bash
+    # Run all tests
+    yarn workspace skemail-web test
+
+    # Watch mode
+    yarn workspace skemail-web test-watch
+
+    # With coverage
+    yarn workspace skemail-web test --coverage
+    ```
+
+    Test configuration:
+    - Max workers: 2
+    - Heap monitoring: Enabled
+    - Memory limit: 4096 MB
+  </Tab>
+
+  <Tab title="calendar-web">
+    ```bash
+    # Run all tests
+    yarn workspace calendar-web test
+
+    # Watch mode
+    yarn workspace calendar-web test-watch
+
+    # With coverage
+    yarn workspace calendar-web test --coverage
+    ```
+
+    Test configuration:
+    - Max workers: 2
+    - Heap monitoring: Enabled
+  </Tab>
+</Tabs>
+
+### Type Checking
+
+Run TypeScript compiler without emitting files:
+
+```bash
+# Check types in skemail-web
+yarn workspace skemail-web ts
+
+# Check types in calendar-web
+yarn workspace calendar-web ts
+```
+
+<Note>
+  The `test` script runs type checking before executing tests to catch type errors early.
+</Note>
+
+## Test Organization
+
+### Test File Locations
+
+Tests are organized in two ways:
+
+1. **Dedicated test directory**: `skemail-web/tests/`
+   ```
+   skemail-web/
+   ├── tests/
+   │   ├── ComposePanel.test.tsx
+   │   ├── ThreadBlock.test.tsx
+   │   ├── userUtils.test.ts
+   │   └── ...
+   ```
+
+2. **Co-located with source**: `src/**/*.test.ts`
+   ```
+   skemail-web/
+   ├── src/
+   │   ├── utils/
+   │   │   ├── emailUtils.ts
+   │   │   └── emailUtils.test.ts
+   │   └── components/
+   │       └── Settings/
+   │           └── Filters/
+   │               ├── Filters.utils.ts
+   │               └── Filters.utils.test.ts
+   ```
+
+### Naming Conventions
+
+- Component tests: `ComponentName.test.tsx`
+- Utility tests: `utilityName.test.ts`
+- Hook tests: `useHookName.test.tsx`
+
+## Writing Tests
+
+### Basic Test Structure
+
+Here's an example from the codebase:
+
+```typescript
+import { formatEmailAddress } from 'skiff-front-utils';
+import { getMailDomain, isSkiffAddress } from 'skiff-utils';
+
+describe('userUtils', () => {
+  describe('formatEmailAddress', () => {
+    it('returns unaltered email address if already valid', () => {
+      const testEmail = 'test@skiff.com';
+      const actual = formatEmailAddress(testEmail);
+      expect(actual).toBe(testEmail);
+    });
+
+    it('appends email domain to wallet address', () => {
+      const testEthAddress = '0x1111000000000000000000000000000000001111';
+      const abbreviated = formatEmailAddress(testEthAddress, true);
+      expect(abbreviated).toBe('0x111...1111' + '@' + getMailDomain());
+
+      const fullLength = formatEmailAddress(testEthAddress, false);
+      expect(fullLength).toBe(testEthAddress + '@' + getMailDomain());
+    });
+  });
+
+  describe('isSkiffAddress', () => {
+    const customDomains = ['skiff.money', 'skiff.earth'];
+    
+    it('check getMailDomain (town/city/com) works', () => {
+      const address = 'test@skiff.town';
+      expect(isSkiffAddress(address, customDomains)).toBe(true);
+    });
+
+    it('check skiff custom domains', () => {
+      const address = 'test@skiff.money';
+      expect(isSkiffAddress(address, customDomains)).toBe(true);
+    });
+
+    it('check non skiff domain', () => {
+      const address = 'test@skiff.me';
+      expect(isSkiffAddress(address, customDomains)).toBe(false);
+    });
+  });
+});
+```
+
+### Testing React Components
+
+<Tabs>
+  <Tab title="Component Rendering">
+    ```tsx
+    import { render, screen } from '@testing-library/react';
+    import { Button } from './Button';
+
+    describe('Button', () => {
+      it('renders with correct text', () => {
+        render(<Button>Click me</Button>);
+        expect(screen.getByText('Click me')).toBeInTheDocument();
+      });
+
+      it('calls onClick when clicked', () => {
+        const handleClick = jest.fn();
+        render(<Button onClick={handleClick}>Click me</Button>);
+        
+        screen.getByText('Click me').click();
+        expect(handleClick).toHaveBeenCalledTimes(1);
+      });
+    });
+    ```
+  </Tab>
+
+  <Tab title="User Interactions">
+    ```tsx
+    import { render, screen } from '@testing-library/react';
+    import userEvent from '@testing-library/user-event';
+    import { ComposePanel } from './ComposePanel';
+
+    describe('ComposePanel', () => {
+      it('updates recipient when user types', async () => {
+        const user = userEvent.setup();
+        render(<ComposePanel />);
+        
+        const input = screen.getByLabelText('To:');
+        await user.type(input, 'test@example.com');
+        
+        expect(input).toHaveValue('test@example.com');
+      });
+    });
+    ```
+  </Tab>
+
+  <Tab title="Testing Hooks">
+    ```tsx
+    import { renderHook } from '@testing-library/react-hooks';
+    import { useDefaultEmailAlias } from './useDefaultEmailAlias';
+
+    describe('useDefaultEmailAlias', () => {
+      it('returns default alias', () => {
+        const { result } = renderHook(() => useDefaultEmailAlias());
+        expect(result.current).toBeDefined();
+      });
+
+      it('updates when user changes default', () => {
+        const { result, rerender } = renderHook(
+          (props) => useDefaultEmailAlias(props.userId),
+          { initialProps: { userId: '1' } }
+        );
+        
+        // Trigger update
+        rerender({ userId: '2' });
+        
+        expect(result.current).toBeDefined();
+      });
+    });
+    ```
+  </Tab>
+</Tabs>
+
+### Testing Utilities
+
+<Tabs>
+  <Tab title="Pure Functions">
+    ```typescript
+    import { formatDate } from './dateUtils';
+
+    describe('formatDate', () => {
+      it('formats date correctly', () => {
+        const date = new Date('2024-03-11');
+        expect(formatDate(date)).toBe('March 11, 2024');
+      });
+
+      it('handles invalid dates', () => {
+        expect(formatDate(null)).toBe('');
+      });
+    });
+    ```
+  </Tab>
+
+  <Tab title="Async Functions">
+    ```typescript
+    import { fetchUserData } from './api';
+
+    describe('fetchUserData', () => {
+      it('fetches user data successfully', async () => {
+        const data = await fetchUserData('user-123');
+        expect(data).toHaveProperty('id', 'user-123');
+      });
+
+      it('handles errors gracefully', async () => {
+        await expect(
+          fetchUserData('invalid-id')
+        ).rejects.toThrow('User not found');
+      });
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Mocking
+
+### Mocking Modules
+
+```typescript
+jest.mock('skiff-front-utils', () => ({
+  formatEmailAddress: jest.fn((email) => email),
+  useCurrentUser: jest.fn(() => ({ id: 'test-user' }))
+}));
+```
+
+### Mocking API Calls (MSW)
+
+calendar-web uses MSW for API mocking:
+
+```typescript
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
+
+const server = setupServer(
+  rest.get('/api/events', (req, res, ctx) => {
+    return res(ctx.json({ events: [] }));
+  })
+);
+
+beforeAll(() => server.listen());
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+```
+
+### Mocking Browser APIs
+
+```typescript
+// Mock localStorage
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  clear: jest.fn()
+};
+global.localStorage = localStorageMock as any;
+
+// Mock IndexedDB (calendar-web)
+import 'fake-indexeddb/auto';
+
+// Mock canvas (skemail-web)
+import 'jest-canvas-mock';
+```
+
+## Test Patterns
+
+### Arrange-Act-Assert
+
+```typescript
+it('updates email subject', () => {
+  // Arrange
+  const initialSubject = 'Hello';
+  const newSubject = 'Hello World';
+  
+  // Act
+  const result = updateSubject(initialSubject, newSubject);
+  
+  // Assert
+  expect(result).toBe(newSubject);
+});
+```
+
+### Testing Redux State
+
+```typescript
+import { configureStore } from '@reduxjs/toolkit';
+import { mailReducer } from './mailSlice';
+
+describe('mailSlice', () => {
+  let store;
+
+  beforeEach(() => {
+    store = configureStore({ reducer: { mail: mailReducer } });
+  });
+
+  it('updates selected thread', () => {
+    store.dispatch(selectThread('thread-123'));
+    expect(store.getState().mail.selectedThread).toBe('thread-123');
+  });
+});
+```
+
+### Testing Styled Components
+
+```typescript
+import { render } from '@testing-library/react';
+import { ThemeProvider } from 'styled-components';
+import { theme } from './theme';
+
+const renderWithTheme = (component) => {
+  return render(
+    <ThemeProvider theme={theme}>
+      {component}
+    </ThemeProvider>
+  );
+};
+
+it('applies correct theme colors', () => {
+  const { container } = renderWithTheme(<Button>Test</Button>);
+  expect(container.firstChild).toHaveStyle('color: #333');
+});
+```
+
+## Code Coverage
+
+### Running Coverage Reports
+
+```bash
+# Generate coverage report
+yarn workspace skemail-web test --coverage
+
+# View coverage in browser
+open coverage/lcov-report/index.html
+```
+
+### Coverage Thresholds
+
+Configure in `jest.config.js`:
+
+```javascript
+module.exports = {
+  coverageThreshold: {
+    global: {
+      statements: 70,
+      branches: 60,
+      functions: 70,
+      lines: 70
+    }
+  }
+};
+```
+
+## Continuous Integration
+
+Tests run automatically on:
+- **Pull Requests**: All tests must pass before merging
+- **Commits to main**: Ensures main branch stability
+
+### CI Commands
+
+The CI pipeline runs:
+
+```bash
+# Type checking
+yarn typescript
+
+# Linting
+yarn lint
+
+# Tests
+yarn test
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Test Behavior, Not Implementation" icon="eye">
+    Focus on testing what the component does, not how it does it:
+
+    ```typescript
+    // Good: Tests behavior
+    it('displays error message when email is invalid', () => {
+      render(<EmailInput value="invalid" />);
+      expect(screen.getByText('Invalid email')).toBeInTheDocument();
+    });
+
+    // Avoid: Tests implementation
+    it('calls validateEmail function', () => {
+      const spy = jest.spyOn(utils, 'validateEmail');
+      render(<EmailInput value="test" />);
+      expect(spy).toHaveBeenCalled();
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Use Descriptive Test Names" icon="tag">
+    Test names should clearly describe what's being tested:
+
+    ```typescript
+    // Good
+    it('displays loading spinner while fetching emails', () => { });
+
+    // Avoid
+    it('works correctly', () => { });
+    ```
+  </Accordion>
+
+  <Accordion title="Keep Tests Isolated" icon="box">
+    Each test should be independent:
+
+    ```typescript
+    // Use beforeEach for setup
+    beforeEach(() => {
+      localStorage.clear();
+      jest.clearAllMocks();
+    });
+
+    // Clean up after tests
+    afterEach(() => {
+      cleanup();
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Test Edge Cases" icon="corner-up-right">
+    Don't just test the happy path:
+
+    ```typescript
+    describe('validateEmail', () => {
+      it('accepts valid email', () => { });
+      it('rejects email without @', () => { });
+      it('rejects email without domain', () => { });
+      it('handles empty string', () => { });
+      it('handles null value', () => { });
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Use Testing Library Queries" icon="magnifying-glass">
+    Follow Testing Library best practices:
+
+    ```typescript
+    // Priority order:
+    screen.getByRole('button', { name: /submit/i })
+    screen.getByLabelText('Email address')
+    screen.getByPlaceholderText('Enter email')
+    screen.getByText('Submit')
+    screen.getByTestId('submit-button') // Last resort
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Debugging Tests
+
+### Running Single Test
+
+```bash
+# Run specific test file
+yarn test userUtils.test.ts
+
+# Run tests matching pattern
+yarn test --testNamePattern="formatEmailAddress"
+```
+
+### Debug Output
+
+```typescript
+import { screen, debug } from '@testing-library/react';
+
+it('debugging test', () => {
+  render(<Component />);
+  
+  // Print entire DOM
+  screen.debug();
+  
+  // Print specific element
+  screen.debug(screen.getByRole('button'));
+});
+```
+
+### VS Code Debugging
+
+Add to `.vscode/launch.json`:
+
+```json
+{
+  "type": "node",
+  "request": "launch",
+  "name": "Jest Current File",
+  "program": "${workspaceFolder}/node_modules/.bin/jest",
+  "args": ["${file}", "--runInBand"],
+  "console": "integratedTerminal"
+}
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Jest Documentation" icon="book" href="https://jestjs.io/docs/getting-started">
+    Official Jest documentation
+  </Card>
+  <Card title="Testing Library" icon="react" href="https://testing-library.com/docs/react-testing-library/intro">
+    React Testing Library guide
+  </Card>
+  <Card title="Testing Best Practices" icon="star" href="https://kentcdodds.com/blog/common-mistakes-with-react-testing-library">
+    Common testing mistakes to avoid
+  </Card>
+  <Card title="MSW Documentation" icon="server" href="https://mswjs.io/docs/">
+    Mock Service Worker docs
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Development Setup" icon="laptop-code" href="/development/setup">
+    Set up your development environment
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="/development/contributing">
+    Learn how to contribute
+  </Card>
+</CardGroup>

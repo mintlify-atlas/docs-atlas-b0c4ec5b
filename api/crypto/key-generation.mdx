@@ -1,0 +1,327 @@
+---
+title: Key Generation
+description: Functions for generating cryptographic keys and deriving keys from passwords
+---
+
+The key generation module provides functions for creating symmetric keys, asymmetric key pairs, and deriving keys from passwords using industry-standard algorithms.
+
+## generateSymmetricKey
+
+Generates a random symmetric key for use with symmetric encryption.
+
+```typescript
+function generateSymmetricKey(): string
+```
+
+### Returns
+
+<ResponseField name="key" type="string" required>
+  Base64-encoded symmetric key (32 bytes) suitable for NaCl secretbox encryption
+</ResponseField>
+
+### Example
+
+```typescript
+import { generateSymmetricKey } from 'skiff-crypto';
+
+const symmetricKey = generateSymmetricKey();
+console.log(symmetricKey.length); // 44 (32 bytes base64-encoded)
+```
+
+## generatePublicPrivateKeyPair
+
+Generates a public/private key pair for encryption and signing.
+
+```typescript
+function generatePublicPrivateKeyPair(): SigningAndEncryptionKeypairs
+```
+
+### Returns
+
+<ResponseField name="keypairs" type="SigningAndEncryptionKeypairs" required>
+  Object containing both encryption and signing key pairs
+</ResponseField>
+
+<ResponseField name="keypairs.publicKey" type="string" required>
+  Base64-encoded public encryption key (Curve25519)
+</ResponseField>
+
+<ResponseField name="keypairs.privateKey" type="string" required>
+  Base64-encoded private encryption key (Curve25519)
+</ResponseField>
+
+<ResponseField name="keypairs.signingPublicKey" type="string" required>
+  Base64-encoded public signing key (Ed25519)
+</ResponseField>
+
+<ResponseField name="keypairs.signingPrivateKey" type="string" required>
+  Base64-encoded private signing key (Ed25519)
+</ResponseField>
+
+### Example
+
+```typescript
+import { generatePublicPrivateKeyPair } from 'skiff-crypto';
+
+const keys = generatePublicPrivateKeyPair();
+
+console.log(keys);
+// {
+//   publicKey: "base64-encoded-public-encryption-key",
+//   privateKey: "base64-encoded-private-encryption-key",
+//   signingPublicKey: "base64-encoded-public-signing-key",
+//   signingPrivateKey: "base64-encoded-private-signing-key"
+// }
+```
+
+### Key Types
+
+- **Encryption keys** (publicKey/privateKey): Used for asymmetric encryption with `stringEncryptAsymmetric()` and `stringDecryptAsymmetric()`. Based on Curve25519.
+- **Signing keys** (signingPublicKey/signingPrivateKey): Used for creating and verifying signatures with `createDetachedSignatureAsymmetric()` and `verifyDetachedSignatureAsymmetric()`. Based on Ed25519.
+
+## createKeyFromSecret
+
+Deterministically generates a key from a secret value and salt using Argon2id.
+
+```typescript
+async function createKeyFromSecret(
+  secret: string,
+  argonSalt: string
+): Promise<string>
+```
+
+### Parameters
+
+<ParamField path="secret" type="string" required>
+  The secret value (typically a password or passphrase)
+</ParamField>
+
+<ParamField path="argonSalt" type="string" required>
+  Salt value for Argon2id. Should be unique per user/context.
+</ParamField>
+
+### Returns
+
+<ResponseField name="key" type="Promise<string>" required>
+  Base64-encoded derived key (32 bytes)
+</ResponseField>
+
+### Example
+
+```typescript
+import { createKeyFromSecret } from 'skiff-crypto';
+
+const password = 'user-password-123';
+const salt = 'unique-user-salt';
+
+const derivedKey = await createKeyFromSecret(password, salt);
+console.log(derivedKey); // "base64-encoded-derived-key"
+
+// Use the derived key for encryption
+import { encryptSymmetric } from 'skiff-crypto';
+const encrypted = encryptSymmetric(data, derivedKey, datagram);
+```
+
+### Implementation Details
+
+- Uses Argon2id algorithm (memory-hard function resistant to GPU attacks)
+- Output length: 32 bytes
+- Same secret and salt will always produce the same key
+- Computationally expensive to prevent brute-force attacks
+
+## createSRPKey
+
+Generates a key for SRP (Secure Remote Password) authentication from a master secret using HKDF.
+
+```typescript
+function createSRPKey(
+  masterSecret: string,
+  salt: string
+): string
+```
+
+### Parameters
+
+<ParamField path="masterSecret" type="string" required>
+  Master secret used as HKDF input key material
+</ParamField>
+
+<ParamField path="salt" type="string" required>
+  Salt value for HKDF derivation
+</ParamField>
+
+### Returns
+
+<ResponseField name="srpKey" type="string" required>
+  Hex-encoded SRP private key (32 bytes)
+</ResponseField>
+
+### Example
+
+```typescript
+import { createSRPKey } from 'skiff-crypto';
+
+const masterSecret = 'user-master-secret';
+const salt = 'srp-salt-value';
+
+const srpPrivateKey = createSRPKey(masterSecret, salt);
+console.log(srpPrivateKey); // "hex-encoded-srp-key"
+```
+
+### Implementation Details
+
+- Uses HKDF (HMAC-based Key Derivation Function) with SHA-256
+- Info parameter: "LOGIN"
+- Output: 32 bytes in hexadecimal format (required by SRP library)
+
+## createPasswordDerivedSecret
+
+Generates a password-derived secret for encrypting private keys using HKDF.
+
+```typescript
+function createPasswordDerivedSecret(
+  masterSecret: string,
+  salt: string
+): string
+```
+
+### Parameters
+
+<ParamField path="masterSecret" type="string" required>
+  User's master secret for HKDF input
+</ParamField>
+
+<ParamField path="salt" type="string" required>
+  Salt to use in HKDF derivation
+</ParamField>
+
+### Returns
+
+<ResponseField name="secret" type="string" required>
+  Base64-encoded password-derived secret (32 bytes)
+</ResponseField>
+
+### Example
+
+```typescript
+import { createPasswordDerivedSecret, encryptSymmetric } from 'skiff-crypto';
+
+const masterSecret = 'user-master-secret';
+const salt = 'password-salt';
+
+const passwordDerivedSecret = createPasswordDerivedSecret(masterSecret, salt);
+
+// Use to encrypt user's private keys
+const encryptedPrivateKey = encryptSymmetric(
+  userPrivateKey,
+  passwordDerivedSecret,
+  datagram
+);
+```
+
+### Implementation Details
+
+- Uses HKDF with SHA-256
+- Info parameter: "PRIVATE_KEYS"
+- Output: 32 bytes base64-encoded
+- Used to derive a symmetric key that encrypts sensitive user data like private keys
+
+## generateVerificationPhraseFromSigningKey
+
+Generates a human-readable verification mnemonic from a signing public key using BIP39-like methodology.
+
+```typescript
+function generateVerificationPhraseFromSigningKey(
+  publicSigningKey: string
+): string
+```
+
+### Parameters
+
+<ParamField path="publicSigningKey" type="string" required>
+  Base64-encoded public signing key to generate verification phrase for
+</ParamField>
+
+### Returns
+
+<ResponseField name="phrase" type="string" required>
+  Mnemonic sentence (space-separated words) derived from the signing key
+</ResponseField>
+
+### Example
+
+```typescript
+import { generatePublicPrivateKeyPair, generateVerificationPhraseFromSigningKey } from 'skiff-crypto';
+
+const keys = generatePublicPrivateKeyPair();
+const verificationPhrase = generateVerificationPhraseFromSigningKey(keys.signingPublicKey);
+
+console.log(verificationPhrase);
+// "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12"
+```
+
+### Use Case
+
+This function generates a human-readable phrase that users can use to verify each other's identity. Two users can compare their verification phrases over a trusted channel (e.g., in person or via phone) to ensure they have each other's correct public keys.
+
+### Implementation Details
+
+- Uses HKDF with SHA-256 to generate a 1-byte checksum
+- Info parameter: "SIGNING_KEY_VERIFICATION_NUMBER"
+- Concatenates signing key with checksum
+- Converts to BIP39-like mnemonic phrase
+
+## Key Derivation Hierarchy
+
+Typical key derivation flow in Skiff:
+
+```typescript
+import { 
+  createKeyFromSecret,
+  createSRPKey,
+  createPasswordDerivedSecret,
+  generatePublicPrivateKeyPair
+} from 'skiff-crypto';
+
+// 1. User provides password
+const password = 'user-password';
+const argonSalt = 'unique-salt-per-user';
+
+// 2. Derive master secret from password using Argon2
+const masterSecret = await createKeyFromSecret(password, argonSalt);
+
+// 3. Derive SRP key for authentication
+const srpSalt = 'srp-salt';
+const srpKey = createSRPKey(masterSecret, srpSalt);
+
+// 4. Derive password-derived secret for encrypting private keys
+const pdsSalt = 'pds-salt';
+const passwordDerivedSecret = createPasswordDerivedSecret(masterSecret, pdsSalt);
+
+// 5. Generate user's key pairs
+const userKeys = generatePublicPrivateKeyPair();
+
+// 6. Encrypt private keys with password-derived secret
+import { encryptSymmetric, createRawJSONDatagram } from 'skiff-crypto';
+const PrivateKeyDatagram = createRawJSONDatagram('PrivateKeys');
+
+const encryptedPrivateKey = encryptSymmetric(
+  userKeys.privateKey,
+  passwordDerivedSecret,
+  PrivateKeyDatagram
+);
+
+const encryptedSigningPrivateKey = encryptSymmetric(
+  userKeys.signingPrivateKey,
+  passwordDerivedSecret,
+  PrivateKeyDatagram
+);
+```
+
+## Security Best Practices
+
+1. **Salt Generation**: Always use unique, random salts for each user/context
+2. **Key Storage**: Never store private keys unencrypted
+3. **Master Secret**: Derive from user password using Argon2 (memory-hard)
+4. **Key Separation**: Use different derived keys for different purposes (SRP, encryption, etc.)
+5. **Verification**: Use verification phrases to ensure correct key exchange

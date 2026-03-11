@@ -1,0 +1,409 @@
+---
+title: Encryption
+description: Detailed guide to symmetric and asymmetric encryption in Skiff
+icon: lock
+---
+
+# Encryption
+
+Skiff provides both symmetric and asymmetric encryption functions built on industry-standard cryptographic libraries. This guide covers the encryption APIs, implementation details, and best practices.
+
+## Symmetric Encryption
+
+Symmetric encryption uses ChaCha20Poly1305, implemented through the `TaggedSecretBox` class. This provides authenticated encryption with additional data (AEAD).
+
+### Basic Usage
+
+```javascript
+const skiffCrypto = require('@skiff-org/skiff-crypto');
+
+// Generate a symmetric key
+const symmetricKey = skiffCrypto.generateSymmetricKey();
+
+// Create a datagram for versioning and type management
+const TestDatagram = skiffCrypto.createJSONWrapperDatagram('ddl://test');
+
+// Encrypt data
+const plaintext = "Hello, skiff-crypto (symmetric encryption)!";
+const encrypted = skiffCrypto.encryptSymmetric(plaintext, symmetricKey, TestDatagram);
+
+// Decrypt data
+const decrypted = skiffCrypto.decryptSymmetric(encrypted, symmetricKey, TestDatagram);
+
+console.log('Expected to be true:', plaintext === decrypted);
+```
+
+Reference: `libs/skiff-crypto/README.md:58-66`
+
+### Symmetric Encryption Functions
+
+#### encryptSymmetric
+
+Encrypts content using secret-key authenticated encryption and returns a base64-encoded string.
+
+```typescript
+function encryptSymmetric<T>(
+  content: T,
+  symmetricKey: string,
+  datagram: Datagram<T>
+): string
+```
+
+**Parameters:**
+- `content`: The object being serialized and encrypted
+- `symmetricKey`: Base64-encoded symmetric key (32 bytes)
+- `datagram`: The mechanism to convert instances of T to a Datagram
+
+**Returns:** Base64-encoded encrypted payload
+
+Reference: `libs/skiff-crypto/src/symmetricEncryption.ts:31`
+
+#### rawEncryptSymmetric
+
+Encrypts content and returns raw `Uint8Array` without base64 encoding.
+
+```typescript
+function rawEncryptSymmetric<T>(
+  content: T,
+  symmetricKey: string,
+  datagram: Datagram<T>
+): Uint8Array
+```
+
+**Returns:** Encrypted payload as `Uint8Array`
+
+Reference: `libs/skiff-crypto/src/symmetricEncryption.ts:16`
+
+#### decryptSymmetric
+
+Decrypts a base64-encoded encrypted payload.
+
+```typescript
+function decryptSymmetric<T>(
+  message: string,
+  symmetricKey: string,
+  DatagramType: Datagram<T>
+): T
+```
+
+**Parameters:**
+- `message`: Base64-encoded encrypted payload
+- `symmetricKey`: Base64-encoded key used for decryption
+- `DatagramType`: The type of object being decrypted
+
+**Returns:** Decrypted message contents
+
+Reference: `libs/skiff-crypto/src/symmetricEncryption.ts:61`
+
+### TaggedSecretBox Implementation
+
+The `TaggedSecretBox` class wraps ChaCha20Poly1305 and adds version/type metadata:
+
+```typescript
+import { ChaCha20Poly1305, NONCE_LENGTH } from '@stablelib/chacha20poly1305';
+import randomBytes from 'randombytes';
+
+export class TaggedSecretBox implements Envelope<any> {
+  private readonly key: ChaCha20Poly1305;
+
+  constructor(keyBytes: Uint8Array) {
+    this.key = new ChaCha20Poly1305(keyBytes);
+  }
+
+  encrypt<T>(datagram: Datagram<T>, data: T, nonce: Uint8Array = randomBytes(NONCE_LENGTH)): TypedBytes {
+    const aad: AADMeta = new AADMeta(datagram.version, datagram.type, nonce);
+    const aadSerialized = aad.serialize();
+
+    return new TypedBytes(
+      concatUint8Arrays(aadSerialized, this.key.seal(nonce, datagram.serialize(data), aadSerialized))
+    );
+  }
+
+  decrypt<T>(datagram: Datagram<T>, bytes: TypedBytes): T {
+    const header = AADMeta.deserialize(bytes);
+    if (header === null || header.metadata === null) {
+      throw new Error("Couldn't decrypt: no header in provided data");
+    }
+    const decrypted: Uint8Array | null = this.key.open(header.metadata.nonce, header.content, header.rawMetadata);
+    if (!decrypted) {
+      throw new Error("Couldn't decrypt: invalid key");
+    }
+
+    if (datagram.type !== header.metadata.type) {
+      throw new Error(
+        `Couldn't decrypt: encrypted type (${header.metadata.type}) doesnt match datagram type (${datagram.type})`
+      );
+    }
+
+    if (!datagram.versionConstraint.test(header.metadata.version)) {
+      throw new Error(
+        `Couldn't decrypt: encrypted version (${
+          header.metadata.version
+        }) doesnt match datagram version constraint (${datagram.versionConstraint.format()})`
+      );
+    }
+
+    return datagram.deserialize(decrypted, header.metadata.version);
+  }
+}
+```
+
+Reference: `libs/skiff-crypto/src/aead/secretbox.ts:12-54`
+
+### Datagram Format
+
+The encrypted data includes a header with version and type information:
+
+```
+NNxxxxxxxxxxxxxxxxxxxxxxxxx...
+  AAxx...BBxx...CCxx...DDxx...
+```
+
+Where:
+- `AA`: Metadata format version (varint-prefixed)
+- `BB`: Object version (varint-prefixed)
+- `CC`: Type name (varint-prefixed)
+- `DD`: Nonce (varint-prefixed)
+- `NN`: Total length of header (varint-prefixed)
+
+Reference: `libs/skiff-crypto/src/aead/common.ts:79-113`
+
+This format ensures:
+- **Type safety**: Prevents decrypting data as the wrong type
+- **Version compatibility**: Validates version constraints
+- **Authenticated metadata**: AAD is verified during decryption
+
+## Asymmetric Encryption
+
+Asymmetric encryption uses TweetNaCl's `box` construction (Curve25519 + XSalsa20 + Poly1305).
+
+### Basic Usage
+
+```javascript
+const skiffCrypto = require('@skiff-org/skiff-crypto');
+
+// Generate a keypair
+const keypair = skiffCrypto.generatePublicPrivateKeyPair();
+
+// Encrypt data
+const plaintext = "Hello, skiff-crypto!";
+const encrypted = skiffCrypto.stringEncryptAsymmetric(
+  keypair.privateKey,
+  { key: keypair.publicKey },
+  plaintext
+);
+
+// Decrypt data
+const decrypted = skiffCrypto.stringDecryptAsymmetric(
+  keypair.privateKey,
+  { key: keypair.publicKey },
+  encrypted
+);
+
+console.log('Expected to be true:', plaintext === decrypted);
+```
+
+Reference: `libs/skiff-crypto/README.md:48-55`
+
+### Asymmetric Encryption Functions
+
+#### stringEncryptAsymmetric
+
+Encrypts a string using public-key authenticated encryption.
+
+```typescript
+function stringEncryptAsymmetric(
+  myPrivateKey: string,
+  theirPublicKey: { key: string },
+  plaintext: string
+): string
+```
+
+**Parameters:**
+- `myPrivateKey`: Your private encryption key (base64-encoded)
+- `theirPublicKey`: Recipient's public key object
+- `plaintext`: The text to encrypt
+
+**Returns:** Base64-encoded encrypted ciphertext
+
+**Implementation:**
+```typescript
+export function stringEncryptAsymmetric(
+  myPrivateKey: string,
+  theirPublicKey: { key: string },
+  plaintext: string
+): string {
+  const sharedKey = nacl.box.before(toByteArray(theirPublicKey.key), toByteArray(myPrivateKey));
+  const encrypted = encryptAsymmetric(sharedKey, plaintext);
+  return encrypted;
+}
+```
+
+Reference: `libs/skiff-crypto/src/asymmetricEncryption.ts:57-65`
+
+#### stringDecryptAsymmetric
+
+Decrypts a string using public-key authenticated encryption. This function is memoized for performance.
+
+```typescript
+function stringDecryptAsymmetric(
+  myPrivateKey: string,
+  theirPublicKey: { key: string },
+  encryptedText: string
+): string
+```
+
+**Parameters:**
+- `myPrivateKey`: Your private encryption key (base64-encoded)
+- `theirPublicKey`: Sender's public key object
+- `encryptedText`: The encrypted data to decrypt
+
+**Returns:** Decrypted plaintext
+
+**Implementation:**
+```typescript
+export const stringDecryptAsymmetric = memoize(
+  (myPrivateKey: string, theirPublicKey: { key: string }, encryptedText: string) => {
+    const sharedKey = nacl.box.before(toByteArray(theirPublicKey.key), toByteArray(myPrivateKey));
+    const decrypted = decryptAsymmetric(sharedKey, encryptedText);
+    return decrypted;
+  },
+  (myPrivateKey, theirPublicKey, encryptedText) => JSON.stringify([myPrivateKey, theirPublicKey.key, encryptedText])
+);
+```
+
+Reference: `libs/skiff-crypto/src/asymmetricEncryption.ts:74-81`
+
+### Low-Level Asymmetric Functions
+
+#### encryptAsymmetric
+
+Core encryption function using nacl.box:
+
+```typescript
+function encryptAsymmetric(
+  secretOrSharedKey: Uint8Array,
+  msg_str: string,
+  key?: Uint8Array
+): string
+```
+
+This function:
+1. Generates a random nonce using `nacl.randomBytes(nacl.box.nonceLength)`
+2. Converts the message to UTF-8 bytes
+3. Encrypts using `nacl.box` or `nacl.box.after` (with precomputed shared key)
+4. Prepends the nonce to the encrypted message
+5. Base64-encodes the result
+
+Reference: `libs/skiff-crypto/src/asymmetricEncryption.ts:16-29`
+
+#### decryptAsymmetric
+
+Core decryption function:
+
+```typescript
+function decryptAsymmetric(
+  secretOrSharedKey: Uint8Array,
+  messageWithNonce: string,
+  key?: Uint8Array
+): string
+```
+
+This function:
+1. Base64-decodes the message
+2. Extracts the nonce (first `nacl.box.nonceLength` bytes)
+3. Extracts the ciphertext (remaining bytes)
+4. Decrypts using `nacl.box.open` or `nacl.box.open.after`
+5. Converts the result from UTF-8 bytes to string
+
+Reference: `libs/skiff-crypto/src/asymmetricEncryption.ts:34-48`
+
+### Nonce Generation
+
+Nonces are critical for security:
+
+```typescript
+function newNonce() {
+  return nacl.randomBytes(nacl.box.nonceLength);
+}
+```
+
+Reference: `libs/skiff-crypto/src/asymmetricEncryption.ts:9-11`
+
+**Important:** Never reuse a nonce with the same key. The encryption functions automatically generate a fresh random nonce for each encryption operation.
+
+## Choosing Between Symmetric and Asymmetric
+
+### Use Symmetric Encryption When:
+
+- Encrypting large amounts of data (documents, files, messages)
+- Both parties can securely share a symmetric key
+- Performance is critical
+- You need to encrypt/decrypt repeatedly with the same key
+
+### Use Asymmetric Encryption When:
+
+- Sharing keys between parties who haven't communicated before
+- Encrypting small amounts of data (typically symmetric keys)
+- You need non-repudiation or digital signatures
+- Key distribution is a primary concern
+
+### Hybrid Approach (Recommended)
+
+For most applications, use both:
+
+1. Generate a random symmetric key
+2. Encrypt your data with the symmetric key (fast)
+3. Encrypt the symmetric key with the recipient's public key (secure)
+4. Send both the encrypted data and encrypted symmetric key
+
+This provides the best of both worlds: performance and secure key distribution.
+
+## Error Handling
+
+Both encryption systems include robust error handling:
+
+```typescript
+// Symmetric decryption errors
+if (!decrypted) {
+  throw new Error("Couldn't decrypt: invalid key");
+}
+
+if (datagram.type !== header.metadata.type) {
+  throw new Error('Type mismatch');
+}
+
+if (!datagram.versionConstraint.test(header.metadata.version)) {
+  throw new Error('Version constraint violation');
+}
+```
+
+```typescript
+// Asymmetric decryption errors
+if (!decrypted) {
+  throw new Error('Could not decrypt message');
+}
+```
+
+Always wrap decryption operations in try-catch blocks to handle potential failures gracefully.
+
+## Security Best Practices
+
+1. **Never reuse nonces**: Each encryption generates a fresh random nonce
+2. **Protect private keys**: Never expose private keys in logs, error messages, or client-side code
+3. **Use authenticated encryption**: Both ChaCha20Poly1305 and NaCl provide authentication
+4. **Validate before decrypting**: Type and version checks prevent malformed data processing
+5. **Use secure random sources**: All random generation uses cryptographically secure sources
+6. **Key rotation**: Periodically rotate encryption keys for long-lived data
+7. **Constant-time operations**: The underlying libraries use constant-time algorithms to prevent timing attacks
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Key Management" icon="key" href="/cryptography/key-management">
+    Learn about generating and managing cryptographic keys
+  </Card>
+  <Card title="Private Search" icon="magnifying-glass" href="/cryptography/private-search">
+    Implement encrypted search functionality
+  </Card>
+</CardGroup>

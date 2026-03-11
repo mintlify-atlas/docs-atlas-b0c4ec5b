@@ -1,0 +1,266 @@
+---
+title: 'Skiff Mail'
+description: 'End-to-end encrypted email with privacy-first design'
+icon: 'envelope'
+---
+
+Skiff Mail is a privacy-first, end-to-end encrypted email application that empowers free and more effective communication. All messages sent between Skiff Mail users are end-to-end encrypted, and Skiff never stores unencrypted access to messages sent or received from external mail providers.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="End-to-End Encryption" icon="lock">
+    All emails between Skiff users are fully encrypted. External emails are encrypted at rest using your private keys.
+  </Card>
+  <Card title="Rich Text Editor" icon="pen-to-square">
+    Compose emails with full text formatting, images, tables, and attachments using Tiptap editor extensions.
+  </Card>
+  <Card title="Smart Search" icon="magnifying-glass">
+    Fast, client-side encrypted search across all your emails with instant results.
+  </Card>
+  <Card title="Advanced Filters" icon="filter">
+    Create custom filters and labels to automatically organize incoming mail.
+  </Card>
+</CardGroup>
+
+## Email Composition
+
+Skiff Mail provides a powerful composition experience built on the Tiptap rich text editor.
+
+### Compose Features
+
+- **Rich Text Formatting**: Bold, italic, underline, strikethrough, text color, and highlighting
+- **Lists and Structure**: Bullet lists, numbered lists, blockquotes, and headings
+- **Media Support**: Inline images, tables with customizable layouts
+- **Links**: Insert and edit hyperlinks with link tooltips
+- **Attachments**: Drag and drop file attachments with encryption
+- **Scheduled Sending**: Schedule emails to be sent at a later time
+
+### Editor Extensions
+
+The mail editor uses several Tiptap extensions:
+
+```typescript
+// Core extensions
+@tiptap/extension-document
+@tiptap/extension-paragraph
+@tiptap/extension-text
+@tiptap/extension-bold
+@tiptap/extension-italic
+@tiptap/extension-underline
+@tiptap/extension-strike
+@tiptap/extension-link
+@tiptap/extension-image
+@tiptap/extension-table
+@tiptap/extension-blockquote
+@tiptap/extension-code
+```
+
+## Inbox Management
+
+### Thread View
+
+Emails are organized into conversation threads for easier navigation:
+
+- Automatic thread grouping by subject and participants
+- Expandable/collapsible messages within threads
+- Quick actions: Archive, delete, mark as spam, move to folder
+- Thread-level encryption badge showing security status
+
+### Labels and Folders
+
+Organize your emails with custom labels and system folders:
+
+- **System Folders**: Inbox, Sent, Drafts, Trash, Spam, Archive
+- **Custom Labels**: Create colored labels for categorization
+- **Filters**: Auto-apply labels based on sender, subject, or content
+
+<img src="/images/placeholder-mail-inbox.png" alt="Mail inbox view" />
+
+## Encryption Architecture
+
+### End-to-End Encryption
+
+Skiff Mail uses the `skiff-mail-protos` library to handle encrypted email data structures:
+
+- **Subject Encryption**: Email subjects are encrypted using protocol buffers
+- **Body Encryption**: Both HTML and plain text bodies are separately encrypted
+- **Attachment Encryption**: Files are encrypted with unique symmetric keys
+- **Session Keys**: Each email uses encrypted session keys for recipient access
+
+### Encryption Flow
+
+1. Compose email with plaintext content
+2. Generate symmetric session key for the message
+3. Encrypt message body, subject, and metadata with session key
+4. Encrypt session key with recipient's public key (for Skiff users)
+5. Store encrypted data on server
+6. Recipients decrypt session key with their private key
+7. Decrypt message content for viewing
+
+## Attachment Handling
+
+Skiff Mail provides secure attachment management:
+
+### Upload and Encryption
+
+- Drag and drop files directly into compose window
+- Files are encrypted client-side before upload
+- Support for multiple file types and sizes
+- Progress indicators for large uploads
+
+### Download and Decryption
+
+- Encrypted attachments are downloaded and decrypted locally
+- Preview support for images and PDFs
+- Export attachments to local filesystem
+- Batch download for multiple attachments
+
+## Search Functionality
+
+Skiff Mail implements a privacy-preserving search system:
+
+- **Client-Side Indexing**: All search indices are built locally
+- **Encrypted Storage**: Search indices are encrypted at rest
+- **Fast Results**: Instant search across thousands of emails
+- **Search Filters**: Filter by sender, date, has attachments, labels
+
+## Advanced Features
+
+<Accordion title="Email Filters">
+  Create powerful automation rules:
+  
+  - Filter by sender email address or domain
+  - Match subject line patterns
+  - Auto-apply labels or move to folders
+  - Mark as read/unread automatically
+  - Forward or archive based on rules
+  
+  Filters are stored using the `skiff-mail-protos` filter protocol buffers.
+</Accordion>
+
+<Accordion title="Import/Export">
+  Migrate your email data:
+  
+  - **Import**: Support for EML format imports
+  - **Export**: Download emails as EML files
+  - **Bulk Operations**: Export multiple threads at once
+  - **Attachments Included**: Exports include all attachments
+</Accordion>
+
+<Accordion title="Email Aliases">
+  Create multiple email identities:
+  
+  - Generate unique email aliases for different purposes
+  - Send from any alias with full encryption
+  - Manage alias settings and forwarding rules
+  - Quick alias creation from compose window
+</Accordion>
+
+<Accordion title="Custom Domains">
+  Use your own domain with Skiff Mail:
+  
+  - Configure custom domain DNS settings
+  - Send and receive from your domain
+  - Full encryption support for custom domains
+  - Multiple domains per account (premium)
+</Accordion>
+
+## Integration Features
+
+### External Email Providers
+
+- Send and receive emails from Gmail, Outlook, and other providers
+- External emails are encrypted upon receipt
+- SMTP/IMAP compatibility for external accounts
+- Unified inbox for all email accounts
+
+### Calendar Integration
+
+- Automatically parse calendar invitations
+- Add events directly to Skiff Calendar
+- RSVP to invitations from within email
+- ICS attachment support
+
+## Mobile Support
+
+Skiff Mail is designed for excellent mobile experience:
+
+- Responsive design for all screen sizes
+- Touch-optimized gestures (swipe to archive/delete)
+- Mobile attachment handling
+- Pull-to-refresh for inbox updates
+- Native mobile apps for iOS and Android
+
+## Privacy and Security
+
+### Zero-Knowledge Architecture
+
+- Skiff servers never have access to decrypted email content
+- Private keys remain on user devices only
+- Metadata is minimized and encrypted where possible
+
+### Cryptographic Libraries
+
+Skiff Mail leverages several cryptographic libraries:
+
+- `skiff-crypto`: Core encryption and decryption functions
+- `skiff-crypto-v2`: Next-generation crypto primitives
+- `@stablelib/chacha20poly1305`: Symmetric encryption
+- `tweetnacl`: Asymmetric key operations
+
+## Technical Implementation
+
+### Source Code Structure
+
+The Skiff Mail application is organized in `skemail-web/`:
+
+```
+skemail-web/src/
+├── components/
+│   ├── Compose/          # Email composition UI
+│   ├── MailEditor/       # Tiptap-based editor
+│   ├── Thread/           # Thread view and actions
+│   ├── mailbox/          # Inbox and folder views
+│   ├── Attachments/      # File handling
+│   ├── labels/           # Label management
+│   └── Settings/         # User preferences
+├── apollo/               # GraphQL client configuration
+└── cache-worker/         # Offline caching
+```
+
+### GraphQL API
+
+Mail operations use GraphQL mutations and queries:
+
+- `sendMessage`: Send encrypted email
+- `getThreads`: Fetch email threads
+- `updateThread`: Modify thread properties
+- `uploadAttachment`: Upload encrypted files
+- `createFilter`: Create email filter rules
+
+For more details on the GraphQL schema, see the [API Reference](/api-reference/graphql).
+
+## Getting Started
+
+<Steps>
+  <Step title="Sign up for Skiff Mail">
+    Create a free account at [skiff.com](https://skiff.com) - no personal information required
+  </Step>
+  <Step title="Set up your account">
+    Choose your @skiff.com email address and secure your account with a strong password
+  </Step>
+  <Step title="Import existing emails">
+    Optional: Import your existing emails from other providers using EML export
+  </Step>
+  <Step title="Start sending encrypted emails">
+    Compose your first email - it's automatically encrypted for Skiff recipients
+  </Step>
+</Steps>
+
+## Learn More
+
+- [Security Model](https://skiff.com/security-model)
+- [Technical Whitepaper](https://skiff.com/whitepaper)
+- [Skiff Crypto Documentation](https://skiff.com/skiff-crypto)
+- [Source Code](https://github.com/skiff-org/skiff-apps/tree/main/skemail-web)

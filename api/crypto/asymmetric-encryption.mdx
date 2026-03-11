@@ -1,0 +1,276 @@
+---
+title: Asymmetric Encryption
+description: Public-key encryption functions using NaCl box for authenticated asymmetric encryption
+---
+
+The asymmetric encryption module provides functions for encrypting and decrypting data using public-key authenticated encryption (NaCl box). This allows secure communication between parties using public/private key pairs.
+
+## stringEncryptAsymmetric
+
+Encrypts a string using asymmetric encryption with NaCl box (public-key authenticated encryption).
+
+```typescript
+function stringEncryptAsymmetric(
+  myPrivateKey: string,
+  theirPublicKey: { key: string },
+  plaintext: string
+): string
+```
+
+### Parameters
+
+<ParamField path="myPrivateKey" type="string" required>
+  Your base64-encoded private encryption key from `generatePublicPrivateKeyPair()`
+</ParamField>
+
+<ParamField path="theirPublicKey" type="{ key: string }" required>
+  Recipient's public key object. The `key` property contains the base64-encoded public encryption key.
+</ParamField>
+
+<ParamField path="plaintext" type="string" required>
+  The plaintext string to encrypt
+</ParamField>
+
+### Returns
+
+<ResponseField name="encrypted" type="string" required>
+  Base64-encoded encrypted data including nonce and ciphertext
+</ResponseField>
+
+### Example
+
+```typescript
+import { stringEncryptAsymmetric, generatePublicPrivateKeyPair } from 'skiff-crypto';
+
+// Generate key pairs for sender and recipient
+const senderKeys = generatePublicPrivateKeyPair();
+const recipientKeys = generatePublicPrivateKeyPair();
+
+// Sender encrypts message for recipient
+const encrypted = stringEncryptAsymmetric(
+  senderKeys.privateKey,
+  { key: recipientKeys.publicKey },
+  'Secret message'
+);
+
+console.log(encrypted); // "base64-encoded-encrypted-data..."
+```
+
+## stringDecryptAsymmetric
+
+Decrypts a string that was encrypted with `stringEncryptAsymmetric`.
+
+```typescript
+function stringDecryptAsymmetric(
+  myPrivateKey: string,
+  theirPublicKey: { key: string },
+  encryptedText: string
+): string
+```
+
+### Parameters
+
+<ParamField path="myPrivateKey" type="string" required>
+  Your base64-encoded private encryption key
+</ParamField>
+
+<ParamField path="theirPublicKey" type="{ key: string }" required>
+  Sender's public key object used during encryption
+</ParamField>
+
+<ParamField path="encryptedText" type="string" required>
+  Base64-encoded encrypted data from `stringEncryptAsymmetric()`
+</ParamField>
+
+### Returns
+
+<ResponseField name="decrypted" type="string" required>
+  The decrypted plaintext string
+</ResponseField>
+
+### Errors
+
+Throws an error with message "Could not decrypt message" if:
+- The wrong private key is used
+- The wrong public key is used
+- The encrypted data is corrupted or invalid
+- The nonce or ciphertext is malformed
+
+### Example
+
+```typescript
+import { stringDecryptAsymmetric } from 'skiff-crypto';
+
+try {
+  // Recipient decrypts message from sender
+  const decrypted = stringDecryptAsymmetric(
+    recipientKeys.privateKey,
+    { key: senderKeys.publicKey },
+    encryptedMessage
+  );
+  console.log(decrypted); // "Secret message"
+} catch (error) {
+  console.error('Decryption failed:', error.message);
+}
+```
+
+### Memoization
+
+This function is memoized using lodash's `memoize`. Results are cached based on the combination of `myPrivateKey`, `theirPublicKey.key`, and `encryptedText`. This improves performance when decrypting the same message multiple times.
+
+## encryptAsymmetric
+
+Low-level asymmetric encryption function using NaCl box.
+
+```typescript
+function encryptAsymmetric(
+  secretOrSharedKey: Uint8Array,
+  msg_str: string,
+  key?: Uint8Array
+): string
+```
+
+### Parameters
+
+<ParamField path="secretOrSharedKey" type="Uint8Array" required>
+  Either a secret key or a pre-computed shared key from `nacl.box.before()`
+</ParamField>
+
+<ParamField path="msg_str" type="string" required>
+  The message to encrypt as a UTF-8 string
+</ParamField>
+
+<ParamField path="key" type="Uint8Array">
+  Optional public key. If provided, uses `nacl.box()`; otherwise uses `nacl.box.after()` with the shared key.
+</ParamField>
+
+### Returns
+
+<ResponseField name="encrypted" type="string" required>
+  Base64-encoded encrypted message with nonce prepended
+</ResponseField>
+
+### Implementation Details
+
+- Generates a random nonce using `nacl.randomBytes(nacl.box.nonceLength)`
+- Converts the message string to UTF-8 bytes
+- Encrypts using either `nacl.box()` or `nacl.box.after()`
+- Prepends the nonce to the ciphertext
+- Returns base64-encoded result
+
+## decryptAsymmetric
+
+Low-level asymmetric decryption function using NaCl box.
+
+```typescript
+function decryptAsymmetric(
+  secretOrSharedKey: Uint8Array,
+  messageWithNonce: string,
+  key?: Uint8Array
+): string
+```
+
+### Parameters
+
+<ParamField path="secretOrSharedKey" type="Uint8Array" required>
+  Either a secret key or a pre-computed shared key from `nacl.box.before()`
+</ParamField>
+
+<ParamField path="messageWithNonce" type="string" required>
+  Base64-encoded encrypted message with nonce from `encryptAsymmetric()`
+</ParamField>
+
+<ParamField path="key" type="Uint8Array">
+  Optional public key. If provided, uses `nacl.box.open()`; otherwise uses `nacl.box.open.after()` with the shared key.
+</ParamField>
+
+### Returns
+
+<ResponseField name="decrypted" type="string" required>
+  The decrypted message as a UTF-8 string
+</ResponseField>
+
+### Errors
+
+Throws `Error('Could not decrypt message')` if decryption fails.
+
+## Key Exchange Pattern
+
+The asymmetric encryption functions use the NaCl box construction, which internally:
+
+1. Computes a shared secret using Curve25519 key exchange
+2. Uses the shared secret with XSalsa20-Poly1305 for authenticated encryption
+
+This provides both confidentiality and authenticity.
+
+```typescript
+import { generatePublicPrivateKeyPair, stringEncryptAsymmetric, stringDecryptAsymmetric } from 'skiff-crypto';
+
+// Alice and Bob generate their key pairs
+const aliceKeys = generatePublicPrivateKeyPair();
+const bobKeys = generatePublicPrivateKeyPair();
+
+// Alice encrypts a message for Bob
+const encrypted = stringEncryptAsymmetric(
+  aliceKeys.privateKey,
+  { key: bobKeys.publicKey },
+  'Hello Bob!'
+);
+
+// Bob decrypts the message from Alice
+const decrypted = stringDecryptAsymmetric(
+  bobKeys.privateKey,
+  { key: aliceKeys.publicKey },
+  encrypted
+);
+
+console.log(decrypted); // "Hello Bob!"
+```
+
+## Self-Encryption
+
+You can also encrypt data for yourself using your own key pair:
+
+```typescript
+import { generatePublicPrivateKeyPair, stringEncryptAsymmetric, stringDecryptAsymmetric } from 'skiff-crypto';
+
+const myKeys = generatePublicPrivateKeyPair();
+
+// Encrypt for yourself
+const encrypted = stringEncryptAsymmetric(
+  myKeys.privateKey,
+  { key: myKeys.publicKey },
+  'Private note'
+);
+
+// Decrypt your own message
+const decrypted = stringDecryptAsymmetric(
+  myKeys.privateKey,
+  { key: myKeys.publicKey },
+  encrypted
+);
+```
+
+## Performance Optimization
+
+For encrypting multiple messages between the same parties, you can pre-compute the shared secret:
+
+```typescript
+import { toByteArray } from 'base64-js';
+import nacl from 'tweetnacl';
+import { encryptAsymmetric, decryptAsymmetric } from 'skiff-crypto';
+
+// Pre-compute shared secret
+const sharedKey = nacl.box.before(
+  toByteArray(recipientPublicKey),
+  toByteArray(myPrivateKey)
+);
+
+// Encrypt multiple messages using the shared key
+const encrypted1 = encryptAsymmetric(sharedKey, 'Message 1');
+const encrypted2 = encryptAsymmetric(sharedKey, 'Message 2');
+
+// Decrypt using the same shared key
+const decrypted1 = decryptAsymmetric(sharedKey, encrypted1);
+const decrypted2 = decryptAsymmetric(sharedKey, encrypted2);
+```

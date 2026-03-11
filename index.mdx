@@ -1,97 +1,142 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Skiff Documentation"
+description: "Privacy-first, end-to-end encrypted workspace with Mail, Calendar, Pages, and Drive"
 ---
 
-## Setting up
+<div style={{textAlign: 'center', padding: '3rem 0'}}>
+  <h1 style={{fontSize: '48px', fontWeight: '400', marginBottom: '1rem', color: '#000000'}}>
+    Privacy-First Workspace
+  </h1>
+  <p style={{fontSize: '20px', color: '#666', maxWidth: '700px', margin: '0 auto 2rem'}}>
+    End-to-end encrypted Mail, Calendar, Pages, and Drive. Open source, audited cryptography powering truly private communication and collaboration.
+  </p>
+</div>
 
-Get your documentation site up and running in minutes.
+## Get Started
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
+<CardGroup cols={2}>
   <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
+    title="Quickstart Guide"
+    icon="rocket"
+    href="/getting-started/quickstart"
   >
-    Edit your docs locally and preview them in real time.
+    Get up and running with Skiff in minutes
   </Card>
   <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
+    title="Local Development"
     icon="code"
-    href="/essentials/code"
+    href="/getting-started/local-development"
   >
-    Add sample code to demonstrate how to use your product.
+    Set up your local development environment
   </Card>
   <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
+    title="Security Model"
+    icon="shield-halved"
+    href="/security-model"
   >
-    Display images and other media.
+    Learn about Skiff's encryption architecture
   </Card>
   <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
+    title="Architecture Overview"
+    icon="sitemap"
+    href="/getting-started/architecture"
   >
-    Write once and reuse across your docs.
+    Understand how Skiff is built
   </Card>
-</Columns>
+</CardGroup>
 
-## Need inspiration?
+## Core Applications
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+Explore Skiff's privacy-first applications that form a complete encrypted workspace.
+
+<CardGroup cols={2}>
+  <Card
+    title="Skiff Mail"
+    icon="envelope"
+    href="/applications/mail"
+  >
+    End-to-end encrypted email with powerful features
+  </Card>
+  <Card
+    title="Skiff Calendar"
+    icon="calendar"
+    href="/applications/calendar"
+  >
+    Private calendar with event management
+  </Card>
+  <Card
+    title="Skiff Pages"
+    icon="file-lines"
+    href="/applications/pages"
+  >
+    Encrypted document editor with rich text support
+  </Card>
+  <Card
+    title="Skiff Drive"
+    icon="folder"
+    href="/applications/drive"
+  >
+    Secure file storage and sharing
+  </Card>
+</CardGroup>
+
+## Cryptography Libraries
+
+Skiff's open-source cryptography powers privacy across all applications.
+
+<CardGroup cols={2}>
+  <Card
+    title="skiff-crypto"
+    icon="lock"
+    href="/libraries/skiff-crypto"
+  >
+    Symmetric and asymmetric encryption library
+  </Card>
+  <Card
+    title="Private Search"
+    icon="magnifying-glass"
+    href="/cryptography/private-search"
+  >
+    Client-side encrypted search indexing
+  </Card>
+  <Card
+    title="Key Management"
+    icon="key"
+    href="/cryptography/key-management"
+  >
+    Secure key generation and storage
+  </Card>
+  <Card
+    title="Crypto API Reference"
+    icon="terminal"
+    href="/api/crypto/symmetric-encryption"
+  >
+    Complete cryptography API documentation
+  </Card>
+</CardGroup>
+
+## Developer Resources
+
+<CardGroup cols={3}>
+  <Card
+    title="Contributing Guide"
+    icon="code-pull-request"
+    href="/development/contributing"
+  >
+    Contribute to Skiff's open source codebase
+  </Card>
+  <Card
+    title="Monorepo Structure"
+    icon="folder-tree"
+    href="/development/monorepo-structure"
+  >
+    Navigate the Skiff Apps monorepo
+  </Card>
+  <Card
+    title="Testing"
+    icon="flask"
+    href="/development/testing"
+  >
+    Run tests and ensure quality
+  </Card>
+</CardGroup>

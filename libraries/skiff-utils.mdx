@@ -1,0 +1,337 @@
+---
+title: "skiff-utils"
+description: "Global utility functions for backend and frontend"
+---
+
+## Overview
+
+`skiff-utils` is a shared utility library providing common functions used across both backend and frontend Skiff applications. It includes validation, formatting, email utilities, file size conversion, type utilities, and more.
+
+**Package**: `skiff-utils`  
+**Source**: `libs/skiff-utils/`
+
+## Key Features
+
+- Email validation and categorization
+- File size conversion utilities
+- String sanitization and formatting
+- Date formatting helpers
+- TypeScript type utilities and guards
+- Wallet and crypto address validation
+- Subscription tier utilities
+
+## Email Utilities
+
+Located in `libs/skiff-utils/src/emailUtils/`
+
+### Premium Username Detection
+
+```typescript
+import { isPremiumUsername, getPremiumUsernamePrice } from 'skiff-utils';
+
+// Check if username is premium (familiar name or <4 chars)
+const isPremium = isPremiumUsername('alice');
+// true
+
+// Get pricing for premium usernames
+const price = getPremiumUsernamePrice('joe');
+// 80 (in dollars)
+```
+
+### Wallet Address Validation
+
+```typescript
+import { 
+  isWalletAddress, 
+  isNameServiceAddress,
+  isCryptoAddress 
+} from 'skiff-utils';
+
+// Check if alias is a wallet address
+isWalletAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb');
+// true
+
+// Check for ENS/ICNS/Bonfida name services
+isNameServiceAddress('alice.eth');
+// true
+
+// Check full email for crypto association
+isCryptoAddress('alice.eth@skiff.com');
+// true
+```
+
+### Alias Categorization
+
+```typescript
+import { getCategorizedAliases, isShortAlias } from 'skiff-utils';
+
+const aliases = [
+  'alice@skiff.com',
+  'bob@custom.com',
+  '0xabc@skiff.com',
+  'joe@skiff.com'
+];
+
+const categorized = getCategorizedAliases(aliases);
+// Returns:
+// {
+//   cryptoAliases: ['0xabc@skiff.com'],
+//   nonCryptoAliases: ['alice@skiff.com', 'bob@custom.com', 'joe@skiff.com'],
+//   genericSkiffAliases: ['alice@skiff.com', 'joe@skiff.com'],
+//   shortGenericSkiffAliases: ['joe@skiff.com']
+// }
+```
+
+Source: `libs/skiff-utils/src/emailUtils/emailUtils.ts:1`
+
+## File Size Utilities
+
+Located in `libs/skiff-utils/src/fileSizeUtils/`
+
+### Byte Conversions
+
+```typescript
+import { 
+  bytesToMb, 
+  mbToBytes, 
+  bytesToHumanReadable,
+  fileSizeStringToBytes
+} from 'skiff-utils';
+
+// Convert between units
+const mb = bytesToMb(5000000);
+// 5
+
+const bytes = mbToBytes(10);
+// 10000000
+
+// Convert to human-readable format
+bytesToHumanReadable(1500);
+// "2 KB" (minimum display is 1 KB)
+
+bytesToHumanReadable(5000000);
+// "5.0 MB"
+
+bytesToHumanReadable(3500000000);
+// "3.5 GB"
+
+// Parse human-readable strings to bytes
+fileSizeStringToBytes('5 MB');
+// 5000000
+```
+
+Source: `libs/skiff-utils/src/fileSizeUtils/fileSizeUtils.ts:1`
+
+## String Utilities
+
+Located in `libs/skiff-utils/src/stringUtils.ts`
+
+### URL Sanitization
+
+```typescript
+import { sanitizeURL, removeAllWhitespace } from 'skiff-utils';
+
+// Sanitize potentially malicious URLs
+sanitizeURL('javascript:alert(1)');
+// 'about:blank'
+
+sanitizeURL('google.com');
+// 'https://google.com'
+
+sanitizeURL('https://example.com');
+// 'https://example.com'
+
+// Remove whitespace
+removeAllWhitespace('hello   world  \n  test');
+// 'helloworldtest'
+```
+
+### Content Snippets
+
+```typescript
+import { getContentSnippet } from 'skiff-utils';
+
+// Create short preview of content (defaults to CONTENT_SNIPPET_SIZE)
+const snippet = getContentSnippet('This is a very long email message...');
+// Returns first N characters for preview
+```
+
+Source: `libs/skiff-utils/src/stringUtils.ts:1`
+
+## Date Utilities
+
+Located in `libs/skiff-utils/src/dateUtils.ts`
+
+```typescript
+import { 
+  dateToMonthAndOrdinalDay, 
+  getFutureDate,
+  daysToMilliseconds 
+} from 'skiff-utils';
+
+// Format date as "April 1st"
+const formatted = dateToMonthAndOrdinalDay(new Date('2024-04-01'));
+// "April 1st"
+
+// Get future date
+const future = getFutureDate(7);
+// Date 7 days from now
+
+// Convert days to milliseconds
+const ms = daysToMilliseconds(30);
+// 2592000000
+```
+
+Source: `libs/skiff-utils/src/dateUtils.ts:1`
+
+## Type Utilities
+
+Located in `libs/skiff-utils/src/typeUtils.ts`
+
+### Type Guards and Assertions
+
+```typescript
+import { 
+  assertExists, 
+  assert,
+  filterExists,
+  filterTruthy 
+} from 'skiff-utils';
+
+// Assert value exists (throws if null/undefined)
+function processUser(user: User | null) {
+  assertExists(user, 'User must be defined');
+  // TypeScript now knows user is non-null
+  return user.name;
+}
+
+// Assert condition is true
+assert(password.length >= 8, 'Password too short');
+
+// Filter out null/undefined from arrays
+const items = [1, null, 2, undefined, 3];
+const defined = items.filter(filterExists);
+// [1, 2, 3] with type number[]
+
+// Filter out all falsy values
+const values = [1, 0, '', 'hello', false, true];
+const truthy = values.filter(filterTruthy);
+// [1, 'hello', true]
+```
+
+### Advanced Type Utilities
+
+```typescript
+import type { 
+  Optional, 
+  WithRequired,
+  OmitStrict,
+  RequireAtLeastOne 
+} from 'skiff-utils';
+
+// Make specific keys optional
+type User = { name: string; email: string; age: number };
+type PartialUser = Optional<User, 'age'>;
+// { name: string; email: string; age?: number }
+
+// Make specific keys required
+type MaybeUser = { name?: string; email?: string };
+type RequiredUser = WithRequired<MaybeUser, 'name'>;
+// { name: string; email?: string }
+
+// Strict omit (K must exist in T)
+type NoAge = OmitStrict<User, 'age'>;
+// { name: string; email: string }
+
+// Require at least one key
+type ContactMethod = RequireAtLeastOne<{
+  email: string;
+  phone: string;
+}>;
+// Must have email, phone, or both
+```
+
+Source: `libs/skiff-utils/src/typeUtils.ts:1`
+
+## Wallet Utilities
+
+Located in `libs/skiff-utils/src/walletUtils.ts`
+
+```typescript
+import { 
+  isSolanaAddress,
+  isCosmosHubAddress,
+  isENSName,
+  isBonfidaName,
+  isICNSName 
+} from 'skiff-utils';
+
+// Validate various blockchain addresses
+isSolanaAddress('DYw8j...');
+isCosmosHubAddress('cosmos1...');
+
+// Check name service formats
+isENSName('alice.eth');
+isBonfidaName('alice.sol');
+isICNSName('alice.osmo');
+```
+
+Source: `libs/skiff-utils/src/walletUtils.ts:1`
+
+## Constants
+
+Located in `libs/skiff-utils/src/constants.ts`
+
+```typescript
+import { 
+  CONTENT_SNIPPET_SIZE,
+  SHORT_ALIAS_MIN_LENGTH,
+  SKIFF_ALIAS_MIN_LENGTH 
+} from 'skiff-utils';
+
+// Default content preview length
+CONTENT_SNIPPET_SIZE; // 120
+
+// Alias length constraints
+SHORT_ALIAS_MIN_LENGTH; // 4
+SKIFF_ALIAS_MIN_LENGTH; // 6
+```
+
+Source: `libs/skiff-utils/src/constants.ts:1`
+
+## Subscription Tier Utilities
+
+Located in `libs/skiff-utils/src/subscriptionTierUtils.ts`
+
+```typescript
+import { /* subscription tier utilities */ } from 'skiff-utils';
+
+// Functions for managing subscription tiers and limits
+// Used to determine feature availability based on user's plan
+```
+
+Source: `libs/skiff-utils/src/subscriptionTierUtils.ts:1`
+
+## Installation
+
+This is a workspace package:
+
+```json
+{
+  "dependencies": {
+    "skiff-utils": "workspace:libs/skiff-utils"
+  }
+}
+```
+
+## Key Dependencies
+
+- **dayjs**: Date manipulation
+- **lodash**: Utility functions
+- **validator**: String validation (email, BTC, Ethereum addresses)
+- **@keplr-wallet/cosmos**: Cosmos blockchain utilities
+
+## Related Libraries
+
+- [skiff-front-utils](/libraries/skiff-front-utils) - Frontend-specific utilities
+- [skiff-graphql](/libraries/skiff-graphql) - GraphQL types and operations

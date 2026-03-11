@@ -1,0 +1,507 @@
+---
+title: 'Skiff Drive'
+description: 'Encrypted cloud storage with secure file sharing'
+icon: 'folder-open'
+---
+
+Skiff Drive is an end-to-end encrypted cloud storage solution that keeps your files completely private. Every file uploaded to Skiff Drive is encrypted on your device before being stored on servers, ensuring that only you and those you share with can access your data.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="File Encryption" icon="shield">
+    All files are encrypted client-side with your private keys before upload.
+  </Card>
+  <Card title="Secure Sharing" icon="share-nodes">
+    Share files and folders with granular permissions while maintaining encryption.
+  </Card>
+  <Card title="Folder Organization" icon="folder-tree">
+    Organize your files with nested folders and intuitive file management.
+  </Card>
+  <Card title="File Preview" icon="eye">
+    Preview documents, images, videos, and PDFs without downloading.
+  </Card>
+</CardGroup>
+
+## File Management
+
+### Upload Files
+
+Multiple ways to upload files to Skiff Drive:
+
+- **Drag and Drop**: Drag files directly into the browser window
+- **File Picker**: Click "Upload" button to select files
+- **Folder Upload**: Upload entire folder structures
+- **Bulk Upload**: Upload multiple files simultaneously
+- **Mobile Upload**: Camera and photo library integration on mobile
+
+### File Operations
+
+Comprehensive file management capabilities:
+
+<Accordion title="Basic Operations">
+  Standard file operations:
+  
+  - **Download**: Download encrypted files and decrypt locally
+  - **Delete**: Move files to trash, permanently delete after 30 days
+  - **Rename**: Change file and folder names
+  - **Move**: Relocate files between folders
+  - **Copy**: Duplicate files and folders
+  - **Star**: Mark important files for quick access
+</Accordion>
+
+<Accordion title="Advanced Operations">
+  Power user features:
+  
+  - **Batch Operations**: Select multiple files for bulk actions
+  - **Search**: Fast full-text search across file names and metadata
+  - **Sorting**: Sort by name, date, size, or type
+  - **Filtering**: Filter by file type or date range
+  - **Recent Files**: Quick access to recently modified files
+  - **Starred Files**: View all starred items
+</Accordion>
+
+### Folder Organization
+
+Hierarchical folder structure for organization:
+
+- **Nested Folders**: Create unlimited folder depth
+- **Folder Colors**: Color-code folders for visual organization
+- **Folder Sharing**: Share entire folders with permissions
+- **Breadcrumb Navigation**: Easy navigation through folder hierarchy
+- **Sidebar Navigation**: Quick access to all folders
+- **Move/Copy Folders**: Reorganize folder structures
+
+<img src="/images/placeholder-drive-browser.png" alt="Skiff Drive file browser" />
+
+## File Encryption
+
+### Encryption Process
+
+Every file is encrypted before leaving your device:
+
+1. **File Selection**: User selects file to upload
+2. **Read File**: File is read into memory in chunks
+3. **Generate Key**: Unique symmetric key generated for file
+4. **Encrypt Chunks**: File encrypted in chunks using ChaCha20-Poly1305
+5. **Encrypt Key**: File key encrypted with user's public key
+6. **Upload**: Encrypted chunks uploaded to server
+7. **Store Metadata**: Encrypted filename and metadata stored
+
+### Encryption Implementation
+
+```typescript
+import { 
+  generateSymmetricKey,
+  encryptSymmetric,
+  decryptSymmetric 
+} from 'skiff-crypto';
+import { ChaCha20Poly1305 } from '@stablelib/chacha20poly1305';
+
+// Generate unique key for each file
+const fileKey = generateSymmetricKey();
+
+// Encrypt file contents
+const encryptedFile = encryptFileChunked(fileData, fileKey);
+
+// Encrypt the file key with user's public key
+const encryptedKey = encryptAsymmetric(
+  userPrivateKey,
+  recipientPublicKey,
+  fileKey
+);
+```
+
+### Chunked Encryption
+
+Large files are encrypted in chunks for efficiency:
+
+- **Chunk Size**: Files split into manageable chunks (typically 4MB)
+- **Parallel Processing**: Chunks encrypted in parallel
+- **Memory Efficient**: Doesn't require loading entire file into memory
+- **Resume Support**: Failed uploads can resume from last chunk
+- **Integrity Checks**: Each chunk has checksum verification
+
+## File Sharing
+
+### Share Permissions
+
+Granular control over file access:
+
+<CardGroup cols={2}>
+  <Card title="View Only" icon="eye">
+    Recipients can view and download files but cannot modify or share further.
+  </Card>
+  <Card title="Can Edit" icon="pen">
+    Recipients can view, download, upload, and modify files in shared folders.
+  </Card>
+  <Card title="Can Comment" icon="comment">
+    Recipients can view files and leave comments without editing.
+  </Card>
+  <Card title="Full Access" icon="key">
+    Recipients have complete control including sharing permissions.
+  </Card>
+</CardGroup>
+
+### Sharing Methods
+
+<Accordion title="Share with Skiff Users">
+  End-to-end encrypted sharing:
+  
+  - Enter recipient's Skiff email address
+  - File key re-encrypted with recipient's public key
+  - Recipient gets instant access
+  - Revocable at any time
+  - Change permissions after sharing
+</Accordion>
+
+<Accordion title="Share with Link">
+  Public link sharing:
+  
+  - Generate shareable link with encryption key in URL
+  - Optional password protection
+  - Set expiration date/time
+  - Disable download for view-only links
+  - Track link access (premium feature)
+  - Revoke link access anytime
+</Accordion>
+
+<Accordion title="Team Sharing">
+  Collaborate with teams:
+  
+  - Share folders with entire teams
+  - Team-based permissions
+  - Shared workspace organization
+  - Activity logs for team folders
+  - Team member management
+</Accordion>
+
+### Share Link Security
+
+Shared links include encryption key in URL fragment:
+
+```
+https://app.skiff.com/drive/file/abc123#key=def456
+                                       ^
+                                       |
+                        Fragment (not sent to server)
+```
+
+The encryption key is in the URL fragment, which:
+- Never sent to the server
+- Only accessible to link recipients
+- Can be combined with password for extra security
+
+## Supported File Types
+
+Skiff Drive supports all file types with enhanced features for common formats:
+
+### Preview Support
+
+<Accordion title="Documents">
+  View documents without downloading:
+  
+  - **PDF**: Full PDF viewer with zoom and search
+  - **Text**: Plain text file viewer (.txt, .md, .log)
+  - **Code**: Syntax-highlighted code viewer
+  - **Skiff Pages**: Native document preview
+</Accordion>
+
+<Accordion title="Images">
+  Image preview and gallery:
+  
+  - **Formats**: JPEG, PNG, GIF, WebP, SVG, BMP
+  - **Gallery View**: Navigate through multiple images
+  - **Zoom**: Pinch to zoom on images
+  - **Rotate**: Rotate images for viewing
+  - **Download**: Save to device
+</Accordion>
+
+<Accordion title="Media">
+  Audio and video playback:
+  
+  - **Video**: MP4, WebM, MOV with built-in player
+  - **Audio**: MP3, WAV, OGG with audio player
+  - **Playback Controls**: Play, pause, seek, volume
+  - **Subtitles**: Support for subtitle tracks (video)
+</Accordion>
+
+<Accordion title="Archives">
+  Compressed file handling:
+  
+  - **View Contents**: Browse archive contents without extraction
+  - **Formats**: ZIP, TAR, GZ (using `jszip` and `fflate`)
+  - **Extract**: Extract specific files from archives
+  - **Download**: Download entire archive or individual files
+</Accordion>
+
+### File Type Icons
+
+Distinctive icons for different file types:
+
+- Document icons for PDFs, Word, etc.
+- Image icons for photos and graphics
+- Video icons for media files
+- Folder icons for directories
+- Code icons for source files
+- Archive icons for compressed files
+
+## Storage Management
+
+### Storage Quota
+
+Monitor and manage your storage:
+
+- **Usage Indicator**: Real-time storage usage display
+- **File Size Display**: See size of individual files and folders
+- **Large File Warning**: Warnings for large uploads
+- **Storage Breakdown**: View storage by file type
+- **Upgrade Options**: Increase storage with paid plans
+
+### Storage Plans
+
+- **Free**: 10 GB storage
+- **Pro**: 100 GB - 1 TB storage
+- **Business**: Custom storage options
+- **Family**: Shared storage pool
+
+## File Versioning
+
+Automatic version history for files:
+
+- **Auto-Versioning**: New version on each upload of same filename
+- **Version Limit**: Number of versions based on plan
+- **Restore**: Restore any previous version
+- **Download Old Versions**: Access historical file versions
+- **Version Comparison**: Compare different versions (premium)
+- **Storage Impact**: Old versions count toward storage quota
+
+<img src="/images/placeholder-file-versions.png" alt="File version history" />
+
+## Mobile Experience
+
+Skiff Drive is fully functional on mobile devices:
+
+### Mobile Features
+
+- **Camera Upload**: Take photos and upload instantly
+- **Photo Library**: Upload from phone photo library
+- **Offline Access**: Mark files for offline availability
+- **Auto Upload**: Automatic camera roll backup
+- **Mobile Preview**: Preview all supported file types
+- **Share Extension**: Share files from other apps to Drive
+
+### Mobile Apps
+
+- **iOS App**: Native iPhone and iPad application
+- **Android App**: Native Android application
+- **Cross-Platform Sync**: Seamless sync across all devices
+- **Push Notifications**: Alerts for shares and updates
+
+## Integration Features
+
+### Email Integration
+
+Seamless integration with Skiff Mail:
+
+- **Attach from Drive**: Attach Drive files to emails
+- **Save to Drive**: Save email attachments to Drive
+- **Share via Email**: Send Drive share links via email
+- **Large File Sending**: Send large files via Drive links
+
+### Pages Integration
+
+Integration with Skiff Pages:
+
+- **Embed Files**: Embed Drive files in Pages documents
+- **Save Pages to Drive**: Export Pages docs to Drive
+- **Preview in Pages**: Open compatible files in Pages editor
+
+### Calendar Integration
+
+- **Event Attachments**: Attach Drive files to calendar events
+- **Share via Calendar**: Share files with event attendees
+
+## Search Functionality
+
+Powerful search across all your files:
+
+- **Filename Search**: Search by file and folder names
+- **Fast Results**: Instant search results as you type
+- **Filter Search**: Combine search with filters
+- **Recent Searches**: Quick access to previous searches
+- **Search Suggestions**: Auto-complete search terms
+
+## Privacy and Security
+
+### Zero-Knowledge Storage
+
+- Files encrypted before upload
+- Servers cannot decrypt file contents
+- Filenames and metadata encrypted
+- Private keys never leave your device
+- Search indices encrypted locally
+
+### Security Features
+
+<Accordion title="Access Control">
+  Comprehensive access management:
+  
+  - Two-factor authentication
+  - Session management
+  - Device authorization
+  - Activity logs
+  - IP allowlisting (enterprise)
+</Accordion>
+
+<Accordion title="Audit Logs">
+  Track all file activity:
+  
+  - File access logs
+  - Share activity tracking
+  - Download records
+  - Permission changes
+  - User action history
+</Accordion>
+
+### Compliance
+
+- **GDPR Compliant**: European data protection standards
+- **HIPAA Compatible**: Healthcare data protection (enterprise)
+- **SOC 2 Type II**: Security certification
+- **Zero-Knowledge**: Cannot comply with content-based requests
+
+## Technical Implementation
+
+### File Upload Flow
+
+```typescript
+import { encryptFileInChunks } from 'skiff-crypto';
+import { uploadFileChunk } from './api';
+
+async function uploadFile(file: File) {
+  // Generate encryption key
+  const fileKey = generateSymmetricKey();
+  
+  // Split into chunks
+  const chunks = splitFileIntoChunks(file, CHUNK_SIZE);
+  
+  // Encrypt and upload each chunk
+  for (const chunk of chunks) {
+    const encrypted = encryptChunk(chunk, fileKey);
+    await uploadFileChunk(encrypted);
+  }
+  
+  // Encrypt file metadata
+  const metadata = encryptFileMetadata({
+    name: file.name,
+    size: file.size,
+    type: file.type
+  }, fileKey);
+  
+  // Store encrypted key
+  const encryptedKey = encryptFileKey(fileKey, userPublicKey);
+  
+  return { metadata, encryptedKey };
+}
+```
+
+### GraphQL Operations
+
+Drive API operations:
+
+- `uploadFile`: Upload encrypted file chunks
+- `downloadFile`: Download and decrypt file
+- `deleteFile`: Move to trash or permanent delete
+- `shareFile`: Create sharing link or invite user
+- `updatePermissions`: Modify sharing permissions
+- `createFolder`: Create new folder
+- `moveFile`: Move file to different folder
+- `getFileVersions`: Retrieve version history
+
+### Local Caching
+
+Files cached locally for performance:
+
+```typescript
+import { set, get } from 'idb-keyval';
+
+// Cache encrypted file chunks
+await set(`file-${fileId}-chunk-${chunkIndex}`, encryptedChunk);
+
+// Retrieve from cache
+const cachedChunk = await get(`file-${fileId}-chunk-${chunkIndex}`);
+```
+
+## Advanced Features
+
+<Accordion title="Trash and Recovery">
+  Deleted file recovery:
+  
+  - Files moved to trash first
+  - 30-day retention in trash
+  - Restore from trash anytime
+  - Permanent delete option
+  - Auto-empty trash after 30 days
+</Accordion>
+
+<Accordion title="File Comments">
+  Collaboration via comments:
+  
+  - Add comments to files
+  - Reply to comments
+  - @mention collaborators
+  - Comment notifications
+  - Resolve/archive comments
+</Accordion>
+
+<Accordion title="Activity Feed">
+  Track file and folder activity:
+  
+  - Recent changes
+  - Share notifications
+  - Comment alerts
+  - Upload confirmations
+  - Version updates
+</Accordion>
+
+## Performance Optimization
+
+### Efficient File Handling
+
+- **Lazy Loading**: Load files on-demand
+- **Virtual Scrolling**: Handle large file lists efficiently
+- **Thumbnail Caching**: Cache image thumbnails locally
+- **Incremental Loading**: Load folders incrementally
+- **Web Workers**: Encryption in background threads
+
+### Bandwidth Optimization
+
+- **Resumable Uploads**: Resume interrupted uploads
+- **Chunked Download**: Download large files in chunks
+- **Compression**: Optional compression before encryption
+- **Deduplication**: Server-side deduplication (encrypted)
+
+## Getting Started
+
+<Steps>
+  <Step title="Access Skiff Drive">
+    Navigate to Drive from your Skiff workspace
+  </Step>
+  <Step title="Upload Your Files">
+    Drag and drop files or click Upload button
+  </Step>
+  <Step title="Organize with Folders">
+    Create folders to organize your files
+  </Step>
+  <Step title="Share Securely">
+    Share files and folders with encryption
+  </Step>
+</Steps>
+
+## Learn More
+
+- [Skiff Security Model](https://skiff.com/security-model)
+- [Skiff Crypto Library](https://skiff.com/skiff-crypto)
+- [Source Code](https://github.com/skiff-org/skiff-apps)
+- [Privacy Policy](https://skiff.com/privacy)

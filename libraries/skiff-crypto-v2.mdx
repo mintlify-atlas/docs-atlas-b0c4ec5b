@@ -1,0 +1,938 @@
+---
+title: skiff-crypto-v2
+description: Enhanced cryptographic library with improved datagram system and PGP support
+---
+
+# skiff-crypto-v2
+
+`skiff-crypto-v2` is the next generation of Skiff's cryptographic library, providing enhanced encryption capabilities with an improved datagram system that separates headers and bodies, along with comprehensive PGP support for email encryption.
+
+<Note>
+Version 2.0.0 introduces breaking changes from v1, particularly in the datagram API structure.
+</Note>
+
+## Features
+
+- **Enhanced Datagram System**: Separate header/body encryption with protobuf support
+- **PGP/OpenPGP Integration**: Full support for PGP key management and email encryption
+- **Improved AEAD**: ChaCha20Poly1305 with enhanced metadata handling
+- **WKD Support**: Web Key Directory integration for automatic key discovery
+- **Backward Compatibility**: Re-exports core functions from skiff-crypto v1
+
+## Installation
+
+<CodeGroup>
+
+```bash npm
+npm install skiff-crypto-v2
+```
+
+```bash yarn
+yarn add skiff-crypto-v2
+```
+
+</CodeGroup>
+
+## Key Differences from v1
+
+### Datagram API Changes
+
+The primary difference is the datagram system now supports separate header and body encryption:
+
+**v1 (skiff-crypto):**
+```typescript
+// Single content parameter
+encryptSymmetric<T>(content: T, symmetricKey: string, datagram: Datagram<T>)
+```
+
+**v2 (skiff-crypto-v2):**
+```typescript
+// Separate header and body parameters
+encryptSymmetric<Header, Body>(
+  header: Header,
+  body: Body,
+  symmetricKey: string,
+  datagram: Datagram<Header, Body>
+)
+```
+
+### Enhanced Metadata
+
+V2 returns additional metadata with decryption results:
+
+```typescript
+// V2 returns metadata along with decrypted content
+{
+  header: Header;
+  body: Body;
+  metadata: AADMeta; // Additional authenticated data metadata
+}
+```
+
+## Core Encryption Functions
+
+### encryptSymmetric
+
+Symmetric encryption with separate header and body support.
+
+```typescript
+function encryptSymmetric<Header, Body>(
+  header: Header,
+  body: Body,
+  symmetricKey: string,
+  datagram: Datagram<Header, Body>
+): string
+```
+
+<ParamField path="header" type="Header" required>
+  The object header being serialized (typically metadata)
+</ParamField>
+
+<ParamField path="body" type="Body" required>
+  The object body being serialized (typically the main content)
+</ParamField>
+
+<ParamField path="symmetricKey" type="string" required>
+  Base64-encoded symmetric key
+</ParamField>
+
+<ParamField path="datagram" type="Datagram<Header, Body>" required>
+  Mechanism to serialize/deserialize header and body
+</ParamField>
+
+**Returns:** Base64-encoded encrypted payload
+
+**Example:**
+
+```javascript
+import { encryptSymmetric, createProtoWrapperDatagramV2 } from 'skiff-crypto-v2';
+
+const datagram = createProtoWrapperDatagramV2(
+  'ddl://document',
+  HeaderProto,
+  BodyProto
+);
+
+const encrypted = encryptSymmetric(
+  { version: '1.0', type: 'document' },
+  { content: 'Hello, World!' },
+  symmetricKey,
+  datagram
+);
+```
+
+**Source:** `libs/skiff-crypto-v2/src/utils.ts:41`
+
+### decryptSymmetric
+
+Symmetric decryption with metadata extraction.
+
+```typescript
+function decryptSymmetric<Header, Body>(
+  message: string,
+  symmetricKey: string,
+  DatagramType: Datagram<Header, Body>
+): { header: Header; body: Body; metadata: AADMeta }
+```
+
+<ParamField path="message" type="string" required>
+  Base64-encoded encrypted payload
+</ParamField>
+
+<ParamField path="symmetricKey" type="string" required>
+  Base64-encoded key used for decryption
+</ParamField>
+
+<ParamField path="DatagramType" type="Datagram<Header, Body>" required>
+  The datagram type for deserialization
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="header" type="Header" required>
+  Decrypted header object
+</ResponseField>
+
+<ResponseField name="body" type="Body" required>
+  Decrypted body object
+</ResponseField>
+
+<ResponseField name="metadata" type="AADMeta" required>
+  Additional authenticated data metadata
+</ResponseField>
+
+**Example:**
+
+```javascript
+const { header, body, metadata } = decryptSymmetric(
+  encrypted,
+  symmetricKey,
+  datagram
+);
+
+console.log('Header:', header);
+console.log('Body:', body);
+console.log('Metadata:', metadata);
+```
+
+**Source:** `libs/skiff-crypto-v2/src/utils.ts:82`
+
+### rawEncryptSymmetric
+
+Symmetric encryption returning raw bytes without base64 encoding.
+
+```typescript
+function rawEncryptSymmetric<Header, Body>(
+  header: Header,
+  body: Body,
+  symmetricKey: string,
+  datagram: Datagram<Header, Body>
+): Uint8Array
+```
+
+<ParamField path="header" type="Header" required>
+  The object header being serialized
+</ParamField>
+
+<ParamField path="body" type="Body" required>
+  The object body being serialized
+</ParamField>
+
+<ParamField path="symmetricKey" type="string" required>
+  Base64-encoded symmetric key
+</ParamField>
+
+<ParamField path="datagram" type="Datagram<Header, Body>" required>
+  Mechanism to serialize header and body
+</ParamField>
+
+**Returns:** Uint8Array encrypted payload
+
+**Source:** `libs/skiff-crypto-v2/src/utils.ts:18`
+
+### rawDecryptSymmetric
+
+Symmetric decryption from raw bytes.
+
+```typescript
+function rawDecryptSymmetric<Header, Body>(
+  message: Uint8Array,
+  symmetricKey: string,
+  DatagramType: Datagram<Header, Body>
+): { header: Header; body: Body; metadata: AADMeta }
+```
+
+<ParamField path="message" type="Uint8Array" required>
+  Encrypted payload as raw bytes
+</ParamField>
+
+<ParamField path="symmetricKey" type="string" required>
+  Base64-encoded key used for decryption
+</ParamField>
+
+<ParamField path="DatagramType" type="Datagram<Header, Body>" required>
+  The datagram type for deserialization
+</ParamField>
+
+**Returns:** Object with decrypted header, body, and metadata
+
+**Source:** `libs/skiff-crypto-v2/src/utils.ts:60`
+
+## Session Key Management
+
+### encryptSessionKey
+
+Encrypt a document session key for sharing.
+
+```typescript
+function encryptSessionKey(
+  sessionKey: SessionKey,
+  myPrivateKey: string,
+  myPublicKey: PublicKey,
+  theirPublicKey: PublicKey
+): EncryptedKey
+```
+
+<ParamField path="sessionKey" type="string" required>
+  Document session key to encrypt
+</ParamField>
+
+<ParamField path="myPrivateKey" type="string" required>
+  Encryption private key used to encrypt session key
+</ParamField>
+
+<ParamField path="myPublicKey" type="PublicKey" required>
+  Current user's encryption public key
+</ParamField>
+
+<ParamField path="theirPublicKey" type="PublicKey" required>
+  Other user's encryption public key
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="encryptedKey" type="string" required>
+  The encrypted session key
+</ResponseField>
+
+<ResponseField name="encryptedBy" type="PublicKey" required>
+  Public key of the user who encrypted it
+</ResponseField>
+
+**Source:** `libs/skiff-crypto-v2/src/core.ts:22`
+
+### decryptSessionKey
+
+Decrypt a document session key.
+
+```typescript
+function decryptSessionKey(
+  encryptedSessionKey: string,
+  myPrivateKey: string,
+  theirPublicKey: Pick<PublicKey, 'key'>
+): SessionKey
+```
+
+<ParamField path="encryptedSessionKey" type="string" required>
+  Encrypted copy of the document session key
+</ParamField>
+
+<ParamField path="myPrivateKey" type="string" required>
+  Current user's encryption private key
+</ParamField>
+
+<ParamField path="theirPublicKey" type="object" required>
+  User who encrypted key's encryption public key
+</ParamField>
+
+**Returns:** Decrypted session key string
+
+**Source:** `libs/skiff-crypto-v2/src/core.ts:43`
+
+### signEncryptedSessionKey
+
+Sign an encrypted document session key.
+
+```typescript
+function signEncryptedSessionKey(
+  encryptedKey: string,
+  mySigningPrivateKey: string
+): string
+```
+
+<ParamField path="encryptedKey" type="string" required>
+  Encrypted key field to sign
+</ParamField>
+
+<ParamField path="mySigningPrivateKey" type="string" required>
+  Signing private key used to generate signature
+</ParamField>
+
+**Returns:** Base64-encoded signature
+
+**Source:** `libs/skiff-crypto-v2/src/core.ts:60`
+
+## Datagram V2 Functions
+
+### encryptDatagramV2
+
+Encrypt a datagram with header and body.
+
+```typescript
+function encryptDatagramV2<Header, Body>(
+  datagram: Datagram<Header, Body>,
+  header: Header,
+  body: Body,
+  sessionKey: string
+): EncryptedDataOutput
+```
+
+<ParamField path="datagram" type="Datagram<Header, Body>" required>
+  Datagram definition for serialization
+</ParamField>
+
+<ParamField path="header" type="Header" required>
+  Datagram header (typically metadata)
+</ParamField>
+
+<ParamField path="body" type="Body" required>
+  Datagram body (main content)
+</ParamField>
+
+<ParamField path="sessionKey" type="string" required>
+  Symmetric document encryption key
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="encryptedData" type="string" required>
+  Base64-encoded encrypted datagram
+</ResponseField>
+
+**Source:** `libs/skiff-crypto-v2/src/core.ts:74`
+
+### decryptDatagramV2
+
+Decrypt a datagram.
+
+```typescript
+function decryptDatagramV2<Header, Body>(
+  datagram: Datagram<Header, Body>,
+  sessionKey: string,
+  encryptedDatagram: string
+): { header: Header; body: Body; metadata: AADMeta }
+```
+
+<ParamField path="datagram" type="Datagram<Header, Body>" required>
+  Datagram definition for deserialization
+</ParamField>
+
+<ParamField path="sessionKey" type="string" required>
+  Symmetric document encryption key
+</ParamField>
+
+<ParamField path="encryptedDatagram" type="string" required>
+  Encrypted datagram data
+</ParamField>
+
+**Returns:** Object with decrypted header, body, and metadata
+
+**Source:** `libs/skiff-crypto-v2/src/core.ts:93`
+
+### createProtoWrapperDatagramV2
+
+Create a datagram that uses Protocol Buffers for serialization.
+
+```typescript
+function createProtoWrapperDatagramV2<Header, Body>(
+  type: string,
+  headerClass: ProtoClass<Header>,
+  bodyClass: ProtoClass<Body>,
+  version?: string,
+  versionConstraint?: Range
+): Datagram<Header, Body>
+```
+
+<ParamField path="type" type="string" required>
+  Datagram type identifier
+</ParamField>
+
+<ParamField path="headerClass" type="ProtoClass<Header>" required>
+  Protobuf class for header serialization
+</ParamField>
+
+<ParamField path="bodyClass" type="ProtoClass<Body>" required>
+  Protobuf class for body serialization
+</ParamField>
+
+<ParamField path="version" type="string" default="0.1.0">
+  Datagram version
+</ParamField>
+
+<ParamField path="versionConstraint" type="Range" default="0.1.*">
+  Datagram version constraint
+</ParamField>
+
+**Returns:** Datagram instance with protobuf serialization
+
+**Example:**
+
+```javascript
+import { createProtoWrapperDatagramV2 } from 'skiff-crypto-v2';
+import { DocumentHeader, DocumentBody } from './generated/protos';
+
+const DocumentDatagram = createProtoWrapperDatagramV2(
+  'ddl://skiff/document',
+  DocumentHeader,
+  DocumentBody,
+  '1.0.0'
+);
+```
+
+**Source:** `libs/skiff-crypto-v2/src/datagramClasses.ts:7`
+
+## PGP Support
+
+### generatePGPKey
+
+Generate a PGP key pair.
+
+```typescript
+async function generatePGPKey(
+  userIDs: UserID[],
+  type?: GenerateKeyOptions['type'],
+  curve?: GenerateKeyOptions['curve']
+): Promise<PGPKeyPair>
+```
+
+<ParamField path="userIDs" type="UserID[]" required>
+  Array of user IDs for the key (name and email)
+</ParamField>
+
+<ParamField path="type" type="string" default="ecc">
+  Key type (ecc, rsa, etc.)
+</ParamField>
+
+<ParamField path="curve" type="string" default="curve25519">
+  ECC curve name
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="privateKey" type="Uint8Array" required>
+  Binary format private key
+</ResponseField>
+
+<ResponseField name="publicKey" type="Uint8Array" required>
+  Binary format public key
+</ResponseField>
+
+<ResponseField name="date" type="Date" required>
+  Key creation date
+</ResponseField>
+
+<ResponseField name="userIDs" type="UserID[]" required>
+  User IDs associated with the key
+</ResponseField>
+
+**Example:**
+
+```javascript
+import { generatePGPKey } from 'skiff-crypto-v2';
+
+const { privateKey, publicKey } = await generatePGPKey([
+  { name: 'John Doe', email: 'john@example.com' }
+]);
+```
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/keyManagement.ts:28`
+
+### exportPGPKey
+
+Export a PGP key in armored format.
+
+```typescript
+async function exportPGPKey(
+  userIDs: UserID[],
+  currentPrivateKey: PrivateKey,
+  createdAt: Date,
+  passphrase?: string
+): Promise<{ privateKey: string; publicKey: string }>
+```
+
+<ParamField path="userIDs" type="UserID[]" required>
+  User IDs for the key
+</ParamField>
+
+<ParamField path="currentPrivateKey" type="PrivateKey" required>
+  Private key to export
+</ParamField>
+
+<ParamField path="createdAt" type="Date" required>
+  Key creation date
+</ParamField>
+
+<ParamField path="passphrase" type="string">
+  Optional passphrase to encrypt the exported key
+</ParamField>
+
+**Returns:** Object with armored private and public keys
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/keyManagement.ts:55`
+
+### readPrivateKey
+
+Read a PGP private key from binary format.
+
+```typescript
+async function readPrivateKey(
+  privateKeyData: Uint8Array
+): Promise<PrivateKey>
+```
+
+<ParamField path="privateKeyData" type="Uint8Array" required>
+  Binary private key data
+</ParamField>
+
+**Returns:** PrivateKey object
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/keyManagement.ts:82`
+
+### readArmoredPrivateKey
+
+Read a PGP private key from armored format.
+
+```typescript
+async function readArmoredPrivateKey(
+  privateKeyData: string,
+  passphrase?: string | null
+): Promise<PrivateKey>
+```
+
+<ParamField path="privateKeyData" type="string" required>
+  Armored private key string
+</ParamField>
+
+<ParamField path="passphrase" type="string">
+  Passphrase to decrypt the key if encrypted
+</ParamField>
+
+**Returns:** PrivateKey object
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/keyManagement.ts:92`
+
+### readPublicKey / readArmoredPublicKey
+
+Read PGP public keys from binary or armored format.
+
+```typescript
+async function readPublicKey(key: Uint8Array): Promise<PublicKey>
+async function readArmoredPublicKey(key: string): Promise<PublicKey>
+```
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/keyManagement.ts:105`, `117`
+
+## PGP Message Encryption
+
+### encryptMessage
+
+Encrypt a message for multiple recipients using PGP.
+
+```typescript
+async function encryptMessage(
+  binary: Uint8Array | ReadableStream,
+  sender: SenderPGPInfo,
+  recipients: RecipientPGPInfo[]
+): Promise<ReadableStream<string>>
+```
+
+<ParamField path="binary" type="Uint8Array | ReadableStream" required>
+  Message content to encrypt
+</ParamField>
+
+<ParamField path="sender" type="SenderPGPInfo" required>
+  Sender information with private key for signing
+</ParamField>
+
+<ParamField path="recipients" type="RecipientPGPInfo[]" required>
+  Array of recipients with public keys
+</ParamField>
+
+**Returns:** ReadableStream of armored encrypted message
+
+**Example:**
+
+```javascript
+import { encryptMessage } from 'skiff-crypto-v2';
+
+const encrypted = await encryptMessage(
+  new TextEncoder().encode('Hello, World!'),
+  {
+    name: 'Alice',
+    email: 'alice@example.com',
+    privateKey: alicePrivateKey,
+    keyID: aliceKeyID
+  },
+  [
+    {
+      name: 'Bob',
+      email: 'bob@example.com',
+      publicKey: bobPublicKey,
+      keyID: bobKeyID
+    }
+  ]
+);
+```
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/encrypt.ts:28`
+
+### decryptMessage
+
+Decrypt a PGP message and verify signature.
+
+```typescript
+async function decryptMessage(
+  message: Message<string>,
+  senderPublicKey: PublicKey,
+  recipientPrivateKey: PrivateKey
+): Promise<{
+  decrypted: string | Uint8Array;
+  signatures: Signature[];
+  signatureVerified: boolean;
+}>
+```
+
+<ParamField path="message" type="Message<string>" required>
+  Encrypted message to decrypt
+</ParamField>
+
+<ParamField path="senderPublicKey" type="PublicKey" required>
+  Sender's public key for signature verification
+</ParamField>
+
+<ParamField path="recipientPrivateKey" type="PrivateKey" required>
+  Recipient's private key for decryption
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="decrypted" type="string | Uint8Array" required>
+  Decrypted message content
+</ResponseField>
+
+<ResponseField name="signatures" type="Signature[]" required>
+  Array of signatures
+</ResponseField>
+
+<ResponseField name="signatureVerified" type="boolean" required>
+  Whether the signature was successfully verified
+</ResponseField>
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/encrypt.ts:84`
+
+### parseEncryptedMessage
+
+Parse an armored encrypted message.
+
+```typescript
+async function parseEncryptedMessage(
+  encryptedText: string
+): Promise<{
+  encryptedMessage: Message;
+  encryptedKeyIDs: KeyID[];
+}>
+```
+
+<ParamField path="encryptedText" type="string" required>
+  Armored encrypted message text
+</ParamField>
+
+**Returns:** Parsed message and key IDs
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/encrypt.ts:75`
+
+## Web Key Directory (WKD)
+
+### fetchWKDKey
+
+Fetch a recipient's public key from Web Key Directory.
+
+```typescript
+async function fetchWKDKey(
+  emailAddress: string,
+  originUrl: URL
+): Promise<PublicKey | null>
+```
+
+<ParamField path="emailAddress" type="string" required>
+  Email address to query for PGP key
+</ParamField>
+
+<ParamField path="originUrl" type="URL" required>
+  Base proxy URL for WKD queries
+</ParamField>
+
+**Returns:** PublicKey if found, null otherwise
+
+**Example:**
+
+```javascript
+import { fetchWKDKey } from 'skiff-crypto-v2';
+
+const publicKey = await fetchWKDKey(
+  'user@example.com',
+  new URL('https://api.skiff.com')
+);
+
+if (publicKey) {
+  console.log('Found PGP key for user');
+}
+```
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/keyManagement.ts:160`
+
+### computeWKDHash
+
+Compute the WKD hash for an email address local part.
+
+```typescript
+async function computeWKDHash(localPart: string): Promise<string>
+```
+
+<ParamField path="localPart" type="string" required>
+  Local part of email address (before @)
+</ParamField>
+
+**Returns:** Z-Base-32 encoded SHA-1 hash (32 characters)
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/keyManagement.ts:128`
+
+### verifyWKDHash
+
+Verify that a provided hash matches the computed hash.
+
+```typescript
+async function verifyWKDHash(
+  localPart: string,
+  providedHash: string
+): Promise<boolean>
+```
+
+<ParamField path="localPart" type="string" required>
+  Local part of email address
+</ParamField>
+
+<ParamField path="providedHash" type="string" required>
+  Hash to verify
+</ParamField>
+
+**Returns:** Boolean indicating if hash is valid
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/keyManagement.ts:148`
+
+### publishWKDKey
+
+Convert a public key into WKD format for publishing.
+
+```typescript
+async function publishWKDKey(armoredKey: string): Promise<Uint8Array>
+```
+
+<ParamField path="armoredKey" type="string" required>
+  Armored public key to publish
+</ParamField>
+
+**Returns:** Binary representation of the public key
+
+**Source:** `libs/skiff-crypto-v2/src/pgp/keyManagement.ts:217`
+
+## Migration from v1
+
+### Basic Encryption Migration
+
+**Before (v1):**
+```javascript
+import { encryptSymmetric, createJSONWrapperDatagram } from 'skiff-crypto';
+
+const datagram = createJSONWrapperDatagram('ddl://data');
+const encrypted = encryptSymmetric(content, key, datagram);
+```
+
+**After (v2):**
+```javascript
+import { encryptSymmetric, createProtoWrapperDatagramV2 } from 'skiff-crypto-v2';
+
+const datagram = createProtoWrapperDatagramV2(
+  'ddl://data',
+  HeaderProto,
+  BodyProto
+);
+const encrypted = encryptSymmetric(header, body, key, datagram);
+```
+
+### Decryption Migration
+
+**Before (v1):**
+```javascript
+const decrypted = decryptSymmetric(encrypted, key, datagram);
+// Returns: T (the content directly)
+```
+
+**After (v2):**
+```javascript
+const { header, body, metadata } = decryptSymmetric(encrypted, key, datagram);
+// Returns: { header: Header, body: Body, metadata: AADMeta }
+```
+
+### Using Backward Compatible Functions
+
+V2 re-exports all v1 functions for backward compatibility:
+
+```javascript
+import {
+  generatePublicPrivateKeyPair,
+  generateSymmetricKey,
+  stringEncryptAsymmetric,
+  stringDecryptAsymmetric,
+  generateHash
+} from 'skiff-crypto-v2';
+
+// These work exactly as in v1
+const keypair = generatePublicPrivateKeyPair();
+const hash = generateHash('data');
+```
+
+## Complete Example
+
+```javascript
+import {
+  generatePGPKey,
+  encryptMessage,
+  decryptMessage,
+  parseEncryptedMessage,
+  readPublicKey
+} from 'skiff-crypto-v2';
+
+// Generate PGP keys for sender and recipient
+const sender = await generatePGPKey([
+  { name: 'Alice', email: 'alice@example.com' }
+]);
+
+const recipient = await generatePGPKey([
+  { name: 'Bob', email: 'bob@example.com' }
+]);
+
+// Encrypt a message
+const messageContent = new TextEncoder().encode('Secret message!');
+const encryptedStream = await encryptMessage(
+  messageContent,
+  {
+    name: 'Alice',
+    email: 'alice@example.com',
+    privateKey: await readPrivateKey(sender.privateKey),
+    keyID: (await readPrivateKey(sender.privateKey)).getKeyIDs()[0]
+  },
+  [
+    {
+      name: 'Bob',
+      email: 'bob@example.com',
+      publicKey: await readPublicKey(recipient.publicKey),
+      keyID: (await readPublicKey(recipient.publicKey)).getKeyIDs()[0]
+    }
+  ]
+);
+
+// Convert stream to string
+const encryptedText = await getStringFromStream(encryptedStream);
+
+// Decrypt the message
+const { encryptedMessage } = await parseEncryptedMessage(encryptedText);
+const { decrypted, signatureVerified } = await decryptMessage(
+  encryptedMessage,
+  await readPublicKey(sender.publicKey),
+  await readPrivateKey(recipient.privateKey)
+);
+
+console.log('Decrypted:', new TextDecoder().decode(decrypted));
+console.log('Signature verified:', signatureVerified);
+```
+
+## Dependencies
+
+- **@stablelib/chacha20poly1305**: ChaCha20-Poly1305 AEAD encryption
+- **openpgp**: OpenPGP.js for PGP operations
+- **protobufjs**: Protocol Buffers support for datagrams
+- **skiff-crypto**: Re-exports core v1 functions
+- **zbase32**: Z-Base-32 encoding for WKD
+
+## Security Considerations
+
+- All PGP keys support ECC (Curve25519) and RSA (minimum 2048 bits)
+- ElGamal and DSA algorithms are explicitly rejected for security
+- WKD queries use CORS-safe proxy endpoints
+- Signature verification prevents re-interpretation attacks via context tags
+- ChaCha20-Poly1305 provides authenticated encryption with additional data (AEAD)
+
+## License
+
+`skiff-crypto-v2` is MIT licensed. It is part of the Skiff open-source project.

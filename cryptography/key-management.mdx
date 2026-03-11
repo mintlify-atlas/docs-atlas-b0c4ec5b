@@ -1,0 +1,518 @@
+---
+title: Key Management
+description: Guide to cryptographic key generation, storage, and management in Skiff
+icon: key
+---
+
+# Key Management
+
+Proper key management is essential for maintaining the security of encrypted data. This guide covers key generation, storage approaches, and best practices for managing cryptographic keys in Skiff.
+
+## Key Generation
+
+### Symmetric Key Generation
+
+Generate a 256-bit (32-byte) symmetric key for use with ChaCha20Poly1305 encryption:
+
+```typescript
+function generateSymmetricKey(): string
+```
+
+**Implementation:**
+```typescript
+export function generateSymmetricKey(): string {
+  const keyByteArray = nacl.randomBytes(nacl.secretbox.keyLength);
+  return fromByteArray(keyByteArray);
+}
+```
+
+Reference: `libs/skiff-crypto/src/keys.ts:14-17`
+
+**Usage:**
+```javascript
+const skiffCrypto = require('@skiff-org/skiff-crypto');
+const symmetricKey = skiffCrypto.generateSymmetricKey();
+console.log('Symmetric key:', symmetricKey);
+```
+
+**Details:**
+- Generates a random 32-byte key using `nacl.randomBytes()`
+- Returns the key as a base64-encoded string
+- Uses cryptographically secure random number generation
+- Key length matches `nacl.secretbox.keyLength` (32 bytes)
+
+### Public/Private Key Pair Generation
+
+Generate encryption and signing key pairs:
+
+```typescript
+interface SigningAndEncryptionKeypairs {
+  publicKey: string;
+  privateKey: string;
+  signingPublicKey: string;
+  signingPrivateKey: string;
+}
+
+function generatePublicPrivateKeyPair(): SigningAndEncryptionKeypairs
+```
+
+**Implementation:**
+```typescript
+export function generatePublicPrivateKeyPair(): SigningAndEncryptionKeypairs {
+  const generateKeyPair = () => nacl.box.keyPair();
+  const generateSigningKeyPair = () => nacl.sign.keyPair();
+  const encryptionKeyPair = generateKeyPair();
+  const signingKeyPair = generateSigningKeyPair();
+  const keyPairs: SigningAndEncryptionKeypairs = {
+    publicKey: fromByteArray(encryptionKeyPair.publicKey),
+    privateKey: fromByteArray(encryptionKeyPair.secretKey),
+    signingPublicKey: fromByteArray(signingKeyPair.publicKey),
+    signingPrivateKey: fromByteArray(signingKeyPair.secretKey)
+  };
+  return keyPairs;
+}
+```
+
+Reference: `libs/skiff-crypto/src/keys.ts:82-94`
+
+**Usage:**
+```javascript
+const keypair = skiffCrypto.generatePublicPrivateKeyPair();
+
+console.log('Encryption public key:', keypair.publicKey);
+console.log('Encryption private key:', keypair.privateKey);
+console.log('Signing public key:', keypair.signingPublicKey);
+console.log('Signing private key:', keypair.signingPrivateKey);
+```
+
+**Key Types:**
+- **Encryption keys** (`publicKey`, `privateKey`): Used with `nacl.box` for asymmetric encryption (Curve25519)
+- **Signing keys** (`signingPublicKey`, `signingPrivateKey`): Used with `nacl.sign` for digital signatures (Ed25519)
+
+### Derived Key Generation
+
+Skiff provides functions to derive keys from master secrets using HKDF (HMAC-based Key Derivation Function):
+
+#### Password-Derived Secret
+
+Generate a symmetric key from a master secret for encrypting user private keys:
+
+```typescript
+function createPasswordDerivedSecret(masterSecret: string, salt: string): string
+```
+
+**Implementation:**
+```typescript
+export function createPasswordDerivedSecret(masterSecret: string, salt: string): string {
+  const privateKey = hkdf(masterSecret, HKDF_LENGTH, {
+    salt,
+    info: HkdfInfo.PRIVATE_KEYS,
+    hash: 'SHA-256'
+  });
+  const passwordDerivedSecret = fromByteArray(privateKey);
+  return passwordDerivedSecret;
+}
+```
+
+Reference: `libs/skiff-crypto/src/keys.ts:102-110`
+
+**Parameters:**
+- `masterSecret`: User's master secret for HKDF input
+- `salt`: Salt to use in HKDF for key derivation
+
+**Returns:** Base64-encoded password-derived secret (32 bytes)
+
+**Use case:** This key is used to encrypt the user's private keys, allowing them to be stored securely and recovered with the user's password.
+
+#### SRP Authentication Key
+
+Generate a key for Secure Remote Password (SRP) authentication:
+
+```typescript
+function createSRPKey(masterSecret: string, salt: string): string
+```
+
+**Implementation:**
+```typescript
+export function createSRPKey(masterSecret: string, salt: string): string {
+  const privateKey = hkdf(masterSecret, HKDF_LENGTH, {
+    salt,
+    info: HkdfInfo.LOGIN,
+    hash: 'SHA-256'
+  }).toString('hex');
+  return privateKey;
+}
+```
+
+Reference: `libs/skiff-crypto/src/keys.ts:59-66`
+
+**Parameters:**
+- `masterSecret`: Master secret used for HKDF
+- `salt`: Salt for SRP key derivation
+
+**Returns:** Hex-encoded SRP private key (required by SRP protocol)
+
+**Note:** Returns hex instead of base64 because the SRP library expects keys in hexadecimal format.
+
+#### Argon2 Key Derivation
+
+Generate a key from a secret using Argon2id (password hashing):
+
+```typescript
+async function createKeyFromSecret(secret: string, argonSalt: string): Promise<string>
+```
+
+**Implementation:**
+```typescript
+export async function createKeyFromSecret(secret: string, argonSalt: string) {
+  const key = await argon2.hash({
+    pass: secret,
+    salt: argonSalt,
+    hashLen: ARGON2_LENGTH, // 32 bytes
+    type: argon2.ArgonType.Argon2id
+  });
+  return fromByteArray(key.hash);
+}
+```
+
+Reference: `libs/skiff-crypto/src/keys.ts:27-35`
+
+**Parameters:**
+- `secret`: Secret value (typically a password)
+- `argonSalt`: Salt for Argon2 hashing
+
+**Returns:** Base64-encoded derived key (32 bytes)
+
+**Why Argon2id?**
+- Winner of the Password Hashing Competition
+- Resistant to GPU/ASIC attacks
+- Provides both memory-hardness and GPU resistance
+- Recommended for password-based key derivation
+
+### HKDF Info Parameters
+
+The HKDF function uses different info strings for different key types:
+
+```typescript
+enum HkdfInfo {
+  LOGIN = 'LOGIN',
+  PRIVATE_KEYS = 'PRIVATE_KEYS',
+  SIGNING_KEY_VERIFICATION_NUMBER = 'SIGNING_KEY_VERIFICATION_NUMBER'
+}
+```
+
+Reference: `libs/skiff-crypto/src/keys.ts:45-49`
+
+These ensure that keys derived from the same master secret for different purposes are cryptographically independent.
+
+## Key Storage
+
+### Client-Side Storage
+
+For browser applications, Skiff uses IndexedDB to store encrypted search indices and keys:
+
+```typescript
+import * as IDB from 'idb-keyval';
+
+// Store encrypted data
+await IDB.set(searchIndexIDBKey(userID), encryptedSearchData);
+
+// Retrieve encrypted data
+const encryptedSearchData = await IDB.get(searchIndexIDBKey(userID));
+```
+
+Reference: `libs/skiff-front-search/src/searchIndex.ts:38`
+
+**Best practices:**
+- Never store private keys in plain text
+- Encrypt private keys with a password-derived key before storage
+- Use secure storage mechanisms (IndexedDB, not localStorage)
+- Clear keys from memory when no longer needed
+
+### Encrypted Key Storage Pattern
+
+Skiff uses a layered encryption approach for storing user keys:
+
+```typescript
+// 1. User enters password
+const masterSecret = await deriveMasterSecretFromPassword(password);
+
+// 2. Derive a key-encryption key from the master secret
+const passwordDerivedSecret = createPasswordDerivedSecret(masterSecret, salt);
+
+// 3. Encrypt the user's private keys with the key-encryption key
+const encryptedPrivateKey = encryptSymmetric(
+  userPrivateKey,
+  passwordDerivedSecret,
+  PrivateKeyDatagram
+);
+
+// 4. Store the encrypted private key
+await storeEncryptedPrivateKey(encryptedPrivateKey);
+```
+
+This approach ensures:
+- Private keys are never stored in plain text
+- Keys can only be decrypted with the user's password
+- Password changes only require re-encrypting the private key
+
+### Search Index Encryption
+
+Search indices are encrypted using a hybrid approach:
+
+```typescript
+export function encryptSearchIndex<T>(
+  searchData: T,
+  publicKey: string,
+  privateKey: string,
+  symmetricKey: string,
+  datagram: Datagram<T>
+): EncryptedSearchData {
+  // Encrypt the search index with symmetric key
+  const encryptedSearchIndex = encryptSymmetric(searchData, symmetricKey, datagram);
+  
+  // Encrypt the symmetric key with user's keypair
+  const encryptedKey = stringEncryptAsymmetric(privateKey, { key: publicKey }, symmetricKey);
+
+  return { encryptedKey, encryptedSearchIndex };
+}
+```
+
+Reference: `libs/skiff-front-search/src/encryption.ts:35-46`
+
+**Decryption:**
+```typescript
+export function decryptSearchIndex<T>(
+  encryptedSearchData: EncryptedSearchData,
+  publicKey: string,
+  privateKey: string,
+  datagram: Datagram<T>
+) {
+  const { encryptedSearchIndex, encryptedKey } = encryptedSearchData;
+
+  // Decrypt the symmetric key with user's keypair
+  const symmetricKey = stringDecryptAsymmetric(privateKey, { key: publicKey }, encryptedKey);
+
+  // Decrypt the search index with the symmetric key
+  const searchIndex = decryptSymmetric(encryptedSearchIndex, symmetricKey, datagram);
+  
+  return { symmetricKey, searchIndex };
+}
+```
+
+Reference: `libs/skiff-front-search/src/encryption.ts:16-31`
+
+## Key Verification
+
+### Signing Key Verification
+
+Generate a human-readable verification phrase from a signing key:
+
+```typescript
+function generateVerificationPhraseFromSigningKey(publicSigningKey: string): string
+```
+
+**Implementation:**
+```typescript
+export function generateVerificationPhraseFromSigningKey(publicSigningKey: string): string {
+  const publicSigningKeyDecoded = toByteArray(publicSigningKey);
+  const publicSigningKeyBuffer = Buffer.from(publicSigningKeyDecoded);
+  const checksum = hkdf(publicSigningKeyBuffer, CHECKSUM_LENGTH, {
+    info: HkdfInfo.SIGNING_KEY_VERIFICATION_NUMBER,
+    hash: 'SHA-256'
+  });
+  const mnemonic = bytesToPassphrase(Buffer.concat([publicSigningKeyBuffer, checksum]));
+  return mnemonic;
+}
+```
+
+Reference: `libs/skiff-crypto/src/keys.ts:120-129`
+
+**Usage:**
+```javascript
+const keypair = skiffCrypto.generatePublicPrivateKeyPair();
+const verificationPhrase = skiffCrypto.generateVerificationPhraseFromSigningKey(
+  keypair.signingPublicKey
+);
+console.log('Verification phrase:', verificationPhrase);
+```
+
+**Use case:** Users can verify each other's signing keys by comparing verification phrases, similar to Signal's safety numbers or WhatsApp's security codes.
+
+This uses a BIP39-like methodology:
+1. Takes the public signing key
+2. Generates a checksum using HKDF
+3. Concatenates key and checksum
+4. Converts to a mnemonic phrase
+
+## Security Best Practices
+
+### Key Generation
+
+1. **Use cryptographically secure random sources**: Always use `nacl.randomBytes()` or equivalent
+2. **Generate keys on the client**: Never send private keys over the network
+3. **Use sufficient key lengths**: 256-bit (32-byte) keys for symmetric encryption
+4. **Generate fresh keys**: Don't reuse keys across different contexts
+
+### Key Storage
+
+1. **Encrypt private keys at rest**: Use password-derived keys to encrypt private keys
+2. **Use secure storage**: IndexedDB for browsers, secure enclaves for mobile
+3. **Never log keys**: Exclude keys from error messages and logs
+4. **Clear sensitive data**: Zero out key material when no longer needed
+5. **Protect against XSS**: Use Content Security Policy and input validation
+
+### Key Distribution
+
+1. **Verify public keys**: Use out-of-band verification (safety numbers)
+2. **Use authenticated channels**: Ensure public keys aren't tampered with
+3. **Implement key transparency**: Log public keys in a verifiable data structure
+4. **Support key rotation**: Allow users to update keys periodically
+
+### Key Lifecycle
+
+1. **Generation**: Use secure random sources
+2. **Distribution**: Protect public keys from tampering
+3. **Storage**: Encrypt private keys with password-derived keys
+4. **Usage**: Follow proper encryption/decryption protocols
+5. **Rotation**: Periodically generate new keys
+6. **Destruction**: Securely delete old keys
+
+### Password-Based Keys
+
+1. **Use strong KDFs**: Argon2id for passwords, HKDF for key derivation
+2. **Use unique salts**: Generate a random salt for each user
+3. **Sufficient iterations**: Configure Argon2 with appropriate parameters
+4. **Don't store passwords**: Only store salts and encrypted keys
+5. **Support key derivation**: Allow re-deriving keys from passwords
+
+## Common Patterns
+
+### User Registration
+
+```typescript
+// 1. User provides password
+const password = getUserPassword();
+
+// 2. Generate salt
+const argonSalt = generateRandomSalt();
+
+// 3. Derive master secret from password
+const masterSecret = await createKeyFromSecret(password, argonSalt);
+
+// 4. Generate user keypairs
+const keypairs = generatePublicPrivateKeyPair();
+
+// 5. Derive password-derived secret
+const hkdfSalt = generateRandomSalt();
+const passwordDerivedSecret = createPasswordDerivedSecret(masterSecret, hkdfSalt);
+
+// 6. Encrypt private keys
+const encryptedPrivateKey = encryptSymmetric(
+  keypairs.privateKey,
+  passwordDerivedSecret,
+  PrivateKeyDatagram
+);
+
+// 7. Store public keys and encrypted private keys
+await storeUserKeys({
+  publicKey: keypairs.publicKey,
+  signingPublicKey: keypairs.signingPublicKey,
+  encryptedPrivateKey,
+  argonSalt,
+  hkdfSalt
+});
+```
+
+### User Login
+
+```typescript
+// 1. Retrieve user's salts
+const { argonSalt, hkdfSalt, encryptedPrivateKey } = await getUserData(username);
+
+// 2. User provides password
+const password = getUserPassword();
+
+// 3. Derive master secret
+const masterSecret = await createKeyFromSecret(password, argonSalt);
+
+// 4. Derive password-derived secret
+const passwordDerivedSecret = createPasswordDerivedSecret(masterSecret, hkdfSalt);
+
+// 5. Decrypt private key
+const privateKey = decryptSymmetric(
+  encryptedPrivateKey,
+  passwordDerivedSecret,
+  PrivateKeyDatagram
+);
+
+// 6. User is now authenticated and has access to their private key
+```
+
+### Sharing Encrypted Data
+
+```typescript
+// 1. Generate a symmetric key for the data
+const dataKey = generateSymmetricKey();
+
+// 2. Encrypt the data
+const encryptedData = encryptSymmetric(data, dataKey, DataDatagram);
+
+// 3. Encrypt the data key for each recipient
+const encryptedKeys = recipients.map(recipient => ({
+  recipientId: recipient.id,
+  encryptedKey: stringEncryptAsymmetric(
+    myPrivateKey,
+    { key: recipient.publicKey },
+    dataKey
+  )
+}));
+
+// 4. Store encrypted data and encrypted keys
+await storeSharedData({
+  encryptedData,
+  encryptedKeys
+});
+```
+
+## Troubleshooting
+
+### Key Format Issues
+
+**Problem:** Keys are the wrong format (hex vs base64)
+
+**Solution:** 
+- Most Skiff functions expect base64-encoded keys
+- SRP functions require hex-encoded keys
+- Use `fromByteArray()` for base64, `.toString('hex')` for hex
+
+### Decryption Failures
+
+**Problem:** "Could not decrypt message" or "invalid key" errors
+
+**Solutions:**
+- Verify the key is correct and properly formatted
+- Check that encryption and decryption use matching key pairs
+- Ensure the data hasn't been corrupted
+- Verify datagram types and versions match
+
+### Key Storage Issues
+
+**Problem:** Keys not persisting or being lost
+
+**Solutions:**
+- Use IndexedDB, not localStorage (more reliable for binary data)
+- Always encrypt private keys before storage
+- Implement proper error handling for storage operations
+- Test key recovery flows thoroughly
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Encryption" icon="lock" href="/cryptography/encryption">
+    Learn about encryption methods and APIs
+  </Card>
+  <Card title="Private Search" icon="magnifying-glass" href="/cryptography/private-search">
+    Implement encrypted search functionality
+  </Card>
+</CardGroup>

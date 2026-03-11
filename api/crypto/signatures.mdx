@@ -1,0 +1,450 @@
+---
+title: Signatures
+description: Digital signature functions using Ed25519 for message signing and verification
+---
+
+The signatures module provides functions for creating and verifying cryptographic signatures using Ed25519. Signatures prove that a message was created by the holder of a specific private key and hasn't been tampered with.
+
+## createDetachedSignatureAsymmetric
+
+Creates a detached signature for a message with context information to prevent signature re-interpretation attacks.
+
+```typescript
+function createDetachedSignatureAsymmetric(
+  message: string,
+  signingPrivateKey: string,
+  context: SignatureContext,
+  additionalContext?: AdditionalContext
+): string
+```
+
+### Parameters
+
+<ParamField path="message" type="string" required>
+  The message to sign
+</ParamField>
+
+<ParamField path="signingPrivateKey" type="string" required>
+  Base64-encoded Ed25519 private signing key from `generatePublicPrivateKeyPair()`
+</ParamField>
+
+<ParamField path="context" type="SignatureContext" required>
+  Principal context enum value that prevents signature re-interpretation across different use cases
+</ParamField>
+
+<ParamField path="additionalContext" type="AdditionalContext">
+  Optional sub-context for additional signature specificity
+</ParamField>
+
+### Returns
+
+<ResponseField name="signature" type="string" required>
+  Base64-encoded detached signature (64 bytes)
+</ResponseField>
+
+### Example
+
+```typescript
+import { 
+  createDetachedSignatureAsymmetric,
+  generatePublicPrivateKeyPair,
+  SignatureContext 
+} from 'skiff-crypto';
+
+const keys = generatePublicPrivateKeyPair();
+
+const message = 'Important document content';
+const signature = createDetachedSignatureAsymmetric(
+  message,
+  keys.signingPrivateKey,
+  SignatureContext.DocumentData
+);
+
+console.log(signature); // "base64-encoded-signature"
+```
+
+## verifyDetachedSignatureAsymmetric
+
+Verifies a detached signature on a message given the context information.
+
+```typescript
+function verifyDetachedSignatureAsymmetric(
+  message: string,
+  signature: string,
+  signingPublicKey: string,
+  context: SignatureContext,
+  additionalContext?: AdditionalContext
+): boolean
+```
+
+### Parameters
+
+<ParamField path="message" type="string" required>
+  The message that was signed
+</ParamField>
+
+<ParamField path="signature" type="string" required>
+  Base64-encoded signature from `createDetachedSignatureAsymmetric()`
+</ParamField>
+
+<ParamField path="signingPublicKey" type="string" required>
+  Base64-encoded Ed25519 public signing key of the signer
+</ParamField>
+
+<ParamField path="context" type="SignatureContext" required>
+  The same context value used when creating the signature
+</ParamField>
+
+<ParamField path="additionalContext" type="AdditionalContext">
+  The same additional context used when creating the signature (if any)
+</ParamField>
+
+### Returns
+
+<ResponseField name="valid" type="boolean" required>
+  `true` if signature is valid for the given message and context, `false` otherwise
+</ResponseField>
+
+### Example
+
+```typescript
+import { 
+  verifyDetachedSignatureAsymmetric,
+  SignatureContext 
+} from 'skiff-crypto';
+
+const isValid = verifyDetachedSignatureAsymmetric(
+  message,
+  signature,
+  keys.signingPublicKey,
+  SignatureContext.DocumentData
+);
+
+if (isValid) {
+  console.log('Signature is valid!');
+} else {
+  console.log('Signature verification failed!');
+}
+```
+
+## SignatureContext
+
+Enum defining signature contexts to prevent re-interpretation attacks. When signing data, you must specify what the signature is being used for.
+
+```typescript
+enum SignatureContext {
+  // Account operations
+  DeleteAccount = 'DELETE_ACCOUNT',
+  DisableMfa = 'DISABLE_MFA',
+  EnrollMfa = 'ENROLL_MFA',
+  RegenerateMfaBackupCodes = 'REGENERATE_MFA_BACKUP_CODES',
+  
+  // Document operations
+  DeleteDoc = 'DELETE_DOC',
+  DocumentChunk = 'DOCUMENT_CHUNK',
+  DocumentData = 'DOCUMENT_DATA',
+  DocumentMetadata = 'DOCUMENT_METADATA',
+  DocumentParent = 'DOCUMENT_PARENT',
+  UnshareDoc = 'UNSHARE_DOC',
+  
+  // Recovery operations
+  DeleteRecoveryData = 'DELETE_RECOVERY_DATA',
+  RecoveryData = 'RECOVERY_DATA',
+  UploadRecoveryEncryptedUserData = 'UPLOAD_RECOVERY_ENCRYPTED_USER_DATA',
+  UploadRecoveryEncryptionPublicKey = 'UPLOAD_RECOVERY_ENCRYPTION_PUBLIC_KEY',
+  UploadRecoveryServerShare = 'UPLOAD_RECOVERY_SERVER_SHARE',
+  UploadRecoverySigningPublicKey = 'UPLOAD_RECOVERY_SIGNING_PUBLIC_KEY',
+  
+  // Authentication
+  SessionKey = 'SESSION_KEY',
+  SrpSalt = 'SRP_SALT',
+  SrpVerifier = 'SRP_VERIFIER',
+  MobileLogin = 'MOBILE_LOGIN',
+  
+  // User data
+  UpdateUserData = 'UPDATE_USER_DATA',
+  UserData = 'USER_DATA',
+  UserPublicKey = 'USER_PUBLIC_KEY',
+  
+  // Links
+  LinksLinkKey = 'LINKS_LINK_KEY',
+  LinksSessionKey = 'LINKS_SESSION_KEY',
+  
+  // Email
+  EmailContent = 'EMAIL_CONTENT'
+}
+```
+
+## AdditionalContext
+
+Enum for optional sub-contexts, primarily used for chunked data.
+
+```typescript
+enum AdditionalContext {
+  LastChunk = 'LAST_CHUNK',
+  NotLastChunk = 'NOT_LAST_CHUNK',
+  NoContext = 'NO_CONTEXT'
+}
+```
+
+### Example with Additional Context
+
+```typescript
+import { 
+  createDetachedSignatureAsymmetric,
+  verifyDetachedSignatureAsymmetric,
+  SignatureContext,
+  AdditionalContext 
+} from 'skiff-crypto';
+
+// Sign a document chunk
+const chunkSignature = createDetachedSignatureAsymmetric(
+  chunkData,
+  signingPrivateKey,
+  SignatureContext.DocumentChunk,
+  AdditionalContext.NotLastChunk
+);
+
+// Verify with matching context
+const isValid = verifyDetachedSignatureAsymmetric(
+  chunkData,
+  chunkSignature,
+  signingPublicKey,
+  SignatureContext.DocumentChunk,
+  AdditionalContext.NotLastChunk
+);
+```
+
+## Signature Re-interpretation Prevention
+
+The context system prevents an attacker from taking a signature meant for one purpose and using it for another.
+
+```typescript
+import { 
+  createDetachedSignatureAsymmetric,
+  verifyDetachedSignatureAsymmetric,
+  SignatureContext 
+} from 'skiff-crypto';
+
+const message = 'delete-user-123';
+
+// Sign for document deletion
+const signature = createDetachedSignatureAsymmetric(
+  message,
+  signingPrivateKey,
+  SignatureContext.DeleteDoc
+);
+
+// Signature is valid for DeleteDoc context
+const validForDoc = verifyDetachedSignatureAsymmetric(
+  message,
+  signature,
+  signingPublicKey,
+  SignatureContext.DeleteDoc
+);
+console.log(validForDoc); // true
+
+// Same signature is INVALID for DeleteAccount context
+const validForAccount = verifyDetachedSignatureAsymmetric(
+  message,
+  signature,
+  signingPublicKey,
+  SignatureContext.DeleteAccount
+);
+console.log(validForAccount); // false - prevents attack!
+```
+
+## Complete Signing Workflow
+
+```typescript
+import { 
+  generatePublicPrivateKeyPair,
+  createDetachedSignatureAsymmetric,
+  verifyDetachedSignatureAsymmetric,
+  SignatureContext 
+} from 'skiff-crypto';
+
+// 1. Generate keys for signer
+const signerKeys = generatePublicPrivateKeyPair();
+
+// 2. Create document and sign it
+const document = {
+  title: 'Important Document',
+  content: 'This is the document content',
+  timestamp: Date.now()
+};
+
+const documentString = JSON.stringify(document);
+const signature = createDetachedSignatureAsymmetric(
+  documentString,
+  signerKeys.signingPrivateKey,
+  SignatureContext.DocumentData
+);
+
+// 3. Store signature with document and share public key
+const signedDocument = {
+  document: documentString,
+  signature,
+  signerPublicKey: signerKeys.signingPublicKey
+};
+
+// 4. Later, recipient verifies the signature
+const isAuthentic = verifyDetachedSignatureAsymmetric(
+  signedDocument.document,
+  signedDocument.signature,
+  signedDocument.signerPublicKey,
+  SignatureContext.DocumentData
+);
+
+if (isAuthentic) {
+  const doc = JSON.parse(signedDocument.document);
+  console.log('Document verified:', doc.title);
+} else {
+  console.error('Document signature invalid - may be tampered!');
+}
+```
+
+## Multi-Signature Verification
+
+```typescript
+import { 
+  generatePublicPrivateKeyPair,
+  createDetachedSignatureAsymmetric,
+  verifyDetachedSignatureAsymmetric,
+  SignatureContext 
+} from 'skiff-crypto';
+
+interface SignedMessage {
+  message: string;
+  signatures: Array<{
+    publicKey: string;
+    signature: string;
+  }>;
+}
+
+function signMessage(
+  message: string,
+  signers: Array<{ privateKey: string; publicKey: string }>,
+  context: SignatureContext
+): SignedMessage {
+  return {
+    message,
+    signatures: signers.map(signer => ({
+      publicKey: signer.publicKey,
+      signature: createDetachedSignatureAsymmetric(
+        message,
+        signer.privateKey,
+        context
+      )
+    }))
+  };
+}
+
+function verifyMultiSignature(
+  signedMsg: SignedMessage,
+  context: SignatureContext
+): boolean {
+  return signedMsg.signatures.every(sig =>
+    verifyDetachedSignatureAsymmetric(
+      signedMsg.message,
+      sig.signature,
+      sig.publicKey,
+      context
+    )
+  );
+}
+
+// Usage
+const signer1 = generatePublicPrivateKeyPair();
+const signer2 = generatePublicPrivateKeyPair();
+
+const multiSigned = signMessage(
+  'Transfer $1000',
+  [
+    { privateKey: signer1.signingPrivateKey, publicKey: signer1.signingPublicKey },
+    { privateKey: signer2.signingPrivateKey, publicKey: signer2.signingPublicKey }
+  ],
+  SignatureContext.UserData
+);
+
+const allValid = verifyMultiSignature(multiSigned, SignatureContext.UserData);
+console.log('All signatures valid:', allValid);
+```
+
+## Implementation Details
+
+### Signature Generation Process
+
+1. Combines message, context, and additional context into JSON array: `[context, additionalContext, message]`
+2. JSON stringifies the array
+3. Converts to UTF-8 bytes
+4. Signs using Ed25519 with `nacl.sign.detached()`
+5. Returns base64-encoded signature
+
+### Verification Process
+
+1. Reconstructs the same JSON array with provided context
+2. Converts to UTF-8 bytes
+3. Verifies signature using Ed25519 with `nacl.sign.detached.verify()`
+4. Returns boolean result
+
+### Ed25519 Properties
+
+- **Algorithm**: EdDSA (Edwards-curve Digital Signature Algorithm)
+- **Curve**: Curve25519
+- **Signature Size**: 64 bytes
+- **Security Level**: ~128 bits
+- **Performance**: Very fast signing and verification
+- **Deterministic**: Same message + key = same signature
+
+## Security Best Practices
+
+1. **Always use context**: Never create signatures without a `SignatureContext`
+2. **Match contexts**: Use the same context for signing and verification
+3. **Protect private keys**: Never expose signing private keys
+4. **Verify before trusting**: Always verify signatures before processing signed data
+5. **Use fresh signatures**: For time-sensitive operations, include timestamps in the message
+6. **Key rotation**: Periodically rotate signing keys for long-term use
+
+## Common Patterns
+
+### Timestamped Signatures
+
+```typescript
+function createTimestampedSignature(
+  data: any,
+  signingPrivateKey: string,
+  context: SignatureContext
+): { signature: string; timestamp: number } {
+  const timestamp = Date.now();
+  const message = JSON.stringify({ data, timestamp });
+  const signature = createDetachedSignatureAsymmetric(
+    message,
+    signingPrivateKey,
+    context
+  );
+  return { signature, timestamp };
+}
+
+function verifyTimestampedSignature(
+  data: any,
+  signature: string,
+  timestamp: number,
+  signingPublicKey: string,
+  context: SignatureContext,
+  maxAge: number = 3600000 // 1 hour
+): boolean {
+  // Check timestamp freshness
+  if (Date.now() - timestamp > maxAge) {
+    return false;
+  }
+  
+  const message = JSON.stringify({ data, timestamp });
+  return verifyDetachedSignatureAsymmetric(
+    message,
+    signature,
+    signingPublicKey,
+    context
+  );
+}
+```

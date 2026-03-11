@@ -1,0 +1,223 @@
+---
+title: Development Setup
+description: Complete guide to setting up your Skiff development environment
+icon: 'laptop-code'
+---
+
+## Prerequisites
+
+Before getting started with Skiff development, ensure you have the following installed:
+
+- **Node.js**: Version 20.9.0 or higher
+- **Yarn**: Version 4.0.1 (managed via Corepack)
+- **Git**: For version control
+
+## Initial Setup
+
+Follow these steps to set up your local development environment:
+
+<Steps>
+  <Step title="Clone the Repository">
+    Fork and clone the Skiff repository to your local machine:
+
+    ```bash
+    git clone https://github.com/<your-username>/skiff-apps.git
+    cd skiff-apps/
+    ```
+
+    Add the upstream remote to keep your fork synchronized:
+
+    ```bash
+    git remote add upstream https://github.com/skiff-org/skiff-apps.git
+    ```
+  </Step>
+
+  <Step title="Set Yarn Version">
+    The project uses Yarn Berry (v4.0.1). Set the correct version:
+
+    ```bash
+    yarn set version berry
+    ```
+
+    This ensures you're using the Yarn version specified in the project's `packageManager` field.
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all workspace dependencies:
+
+    ```bash
+    yarn install
+    ```
+
+    This will install dependencies for all workspaces in the monorepo, including:
+    - Root dependencies
+    - Library packages in `libs/`
+    - Application packages (`skemail-web`, `calendar-web`, etc.)
+  </Step>
+
+  <Step title="Build Libraries">
+    Before running any application, build the shared libraries:
+
+    ```bash
+    yarn build:lib
+    ```
+
+    This command builds the libraries in the following order:
+    1. `skiff-utils`
+    2. `skiff-mail-protos`
+    3. `skiff-graphql`
+    4. `@skiff-org/skiff-crypto`
+    5. `skiff-front-graphql`
+    6. `skiff-front-utils`
+
+    <Note>
+      Libraries must be built in topological order due to their dependencies on each other.
+    </Note>
+  </Step>
+
+  <Step title="Run the Development Server">
+    Start the default development server (Skiff Mail):
+
+    ```bash
+    yarn dev
+    ```
+
+    This runs `skemail-web` in development mode. Navigate to:
+
+    ```
+    http://localhost:4200/mail/inbox
+    ```
+
+    <Info>
+      The development build currently uses mock data. Live API access may be added in future updates.
+    </Info>
+  </Step>
+</Steps>
+
+## Running Individual Applications
+
+The monorepo contains multiple applications. Here's how to run each one:
+
+### Skiff Mail (skemail-web)
+
+```bash
+yarn workspace skemail-web dev
+```
+
+Access at: `http://localhost:4200/mail/inbox`
+
+### Skiff Calendar (calendar-web)
+
+```bash
+yarn workspace calendar-web dev
+```
+
+Access at: `http://localhost:4200/calendar`
+
+## Development Scripts
+
+### Root-Level Scripts
+
+| Script | Description |
+|--------|-------------|
+| `yarn build:lib` | Build all libraries in libs/ |
+| `yarn dev` | Run skemail-web in development mode |
+
+### Application-Level Scripts
+
+Each application (skemail-web, calendar-web) has its own set of scripts:
+
+| Script | Description |
+|--------|-------------|
+| `yarn dev` | Start development server |
+| `yarn build` | Production build |
+| `yarn test` | Run tests |
+| `yarn lint` | Check code style with ESLint |
+| `yarn lint:fix` | Auto-fix linting issues |
+| `yarn ts` | Type-check without emitting files |
+
+## Common Development Tasks
+
+### Syncing Your Fork
+
+Keep your local main branch up to date:
+
+```bash
+git checkout main
+git pull upstream main
+```
+
+### Creating a Feature Branch
+
+```bash
+git checkout -b feature-branch-name
+```
+
+### Cleaning Build Artifacts
+
+If you encounter build issues, clean the build artifacts:
+
+```bash
+# Clean skemail-web build
+yarn workspace skemail-web build:clean
+
+# Clean Yarn cache
+yarn workspace skemail-web webpack:clean
+```
+
+## Environment Configuration
+
+Some applications use environment variables for configuration:
+
+- **skemail-web**: Uses `dotenv` for environment configuration
+- **calendar-web**: Uses `dotenv` with different configs for dev/production
+
+Check each application's configuration files for available environment variables.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Build Fails with Module Not Found">
+    Ensure you've built the libraries first:
+
+    ```bash
+    yarn build:lib
+    ```
+
+    Libraries must be built before applications can use them.
+  </Accordion>
+
+  <Accordion title="Yarn Version Mismatch">
+    The project requires Yarn 4.0.1. Reset the version:
+
+    ```bash
+    yarn set version berry
+    ```
+
+    Check the version:
+
+    ```bash
+    yarn --version
+    ```
+  </Accordion>
+
+  <Accordion title="Port Already in Use">
+    If port 4200 is already in use, you can:
+    - Stop the process using the port
+    - Modify the webpack dev server configuration to use a different port
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Monorepo Structure" icon="folder-tree" href="/development/monorepo-structure">
+    Learn about the workspace organization
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="/development/contributing">
+    Read the contribution guidelines
+  </Card>
+  <Card title="Testing" icon="flask" href="/development/testing">
+    Understand the testing setup
+  </Card>
+</CardGroup>

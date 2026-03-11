@@ -1,0 +1,555 @@
+---
+title: "skiff-front-search"
+description: "Client-side search indexing with MiniSearch"
+---
+
+## Overview
+
+`skiff-front-search` provides encrypted, client-side search functionality for Skiff applications using MiniSearch. It enables fast, privacy-preserving search across emails and documents with support for fuzzy matching, stemming, and custom scoring.
+
+**Package**: `skiff-front-search`  
+**Source**: `libs/skiff-front-search/`
+
+## Key Features
+
+- **Client-side search**: All indexing and search happens locally
+- **Encrypted storage**: Search indices are encrypted with user keys
+- **MiniSearch integration**: Fast, full-text search with fuzzy matching
+- **Auto-save**: Debounced index persistence to IndexedDB
+- **Stemming support**: Language-aware word stemming
+- **Stop word filtering**: Improved relevance by removing common words
+- **Custom scoring**: Boost specific fields (subject, sender, etc.)
+- **Date range filtering**: Search within time periods
+
+## Core Concepts
+
+### Search Index Architecture
+
+1. **Items are indexed locally** with user-specific encryption keys
+2. **Indices are stored in IndexedDB** for persistence
+3. **Search is performed entirely client-side** for privacy
+4. **Auto-save** reduces write operations with debouncing
+
+Source: `libs/skiff-front-search/src/searchIndex.ts:1`
+
+## Creating a Search Index
+
+Located in `libs/skiff-front-search/src/searchIndex.ts`
+
+### Basic Index Setup
+
+```typescript
+import { createSearchIndexType, SearchClient } from 'skiff-front-search';
+import type { Options } from 'minisearch';
+
+// Define your indexed item structure
+interface EmailIndexItem {
+  id: string;
+  updatedAt: number;
+  subject: string;
+  from: string;
+  to: string;
+  body: string;
+  ccAddresses?: string;
+  bccAddresses?: string;
+}
+
+// Define metadata for your index
+interface EmailIndexMetadata {
+  lastSyncedAt: number;
+  version: string;
+}
+
+// Configure MiniSearch options
+const miniSearchOptions: Options<EmailIndexItem> = {
+  fields: ['subject', 'from', 'to', 'body', 'ccAddresses', 'bccAddresses'],
+  storeFields: ['id', 'updatedAt'],
+  searchOptions: {
+    boost: { subject: 2, from: 1.5 },  // Boost subject and sender
+    fuzzy: 0.2,
+    prefix: true
+  }
+};
+
+// Create search index class
+const EmailSearchIndex = createSearchIndexType<EmailIndexItem, EmailIndexMetadata>(
+  SearchClient.Skemail,
+  miniSearchOptions,
+  (userID) => `email-search-index-${userID}`,  // IndexedDB key
+  { lastSyncedAt: 0, version: '1.0' }          // Default metadata
+);
+
+// Load or create index for user
+const searchIndex = await EmailSearchIndex.loadOrCreate(
+  userID,
+  { publicKey, privateKey }
+);
+```
+
+Source: `libs/skiff-front-search/src/searchIndex.ts:24`
+
+### Adding Items to Index
+
+```typescript
+import { EmailSearchIndex } from './searchIndex';
+
+// Add single item
+searchIndex.add({
+  id: 'email-123',
+  updatedAt: Date.now(),
+  subject: 'Project Update',
+  from: 'alice@example.com',
+  to: 'bob@example.com',
+  body: 'Here is the latest project status...'
+});
+
+// Add multiple items
+emails.forEach(email => {
+  searchIndex.add({
+    id: email.id,
+    updatedAt: email.updatedAt,
+    subject: email.subject,
+    from: email.from,
+    to: email.to,
+    body: email.decryptedBody
+  });
+});
+
+// Index is automatically saved (debounced)
+```
+
+Source: `libs/skiff-front-search/src/searchIndex.ts:119`
+
+### Searching the Index
+
+```typescript
+import { DateRangeFilter } from 'skiff-front-search';
+import { AscDesc } from 'skiff-graphql';
+
+// Basic search
+const results = searchIndex.search(
+  'project update',
+  undefined,  // No date filter
+  AscDesc.Desc  // Sort by most recent
+);
+
+results.forEach(result => {
+  console.log('Email ID:', result.id);
+  console.log('Relevance score:', result.score);
+  console.log('Updated at:', result.updatedAt);
+});
+
+// Search with date range filter
+const lastWeek: DateRangeFilter = {
+  start: Date.now() - 7 * 24 * 60 * 60 * 1000,
+  end: Date.now()
+};
+
+const recentResults = searchIndex.search(
+  'meeting notes',
+  lastWeek,
+  AscDesc.Desc
+);
+
+// Search returns empty array if query is empty
+const emptyQuery = searchIndex.search('', undefined, AscDesc.Desc);
+// []
+```
+
+Source: `libs/skiff-front-search/src/searchIndex.ts:149`
+
+### Removing Items
+
+```typescript
+// Remove single item
+searchIndex.remove('email-123');
+
+// Remove multiple items
+const emailIDsToDelete = ['email-1', 'email-2', 'email-3'];
+emailIDsToDelete.forEach(id => searchIndex.remove(id));
+```
+
+Source: `libs/skiff-front-search/src/searchIndex.ts:130`
+
+### Getting Recent Items
+
+```typescript
+// Get 10 most recently updated items
+const recentItems = searchIndex.getRecentItems();
+
+recentItems.forEach(item => {
+  console.log(item.id, item.updatedAt);
+});
+```
+
+Source: `libs/skiff-front-search/src/searchIndex.ts:140`
+
+### Managing Metadata
+
+```typescript
+// Update index metadata
+searchIndex.setMetadata({
+  lastSyncedAt: Date.now(),
+  version: '1.1'
+});
+
+// Access current metadata
+console.log(searchIndex.metadata);
+// { lastSyncedAt: 1234567890, version: '1.1' }
+```
+
+Source: `libs/skiff-front-search/src/searchIndex.ts:110`
+
+### Manual Save
+
+```typescript
+// Force immediate save (bypasses debounce)
+await searchIndex.save.flush();
+
+// Cancel pending save
+searchIndex.save.cancel();
+```
+
+Source: `libs/skiff-front-search/src/searchIndex.ts:85`
+
+## Search Utilities
+
+Located in `libs/skiff-front-search/src/utils.ts`
+
+### Default Search Options
+
+```typescript
+import { getDefaultSearchOptions, SearchClient } from 'skiff-front-search';
+
+// Get default search options for email
+const emailOptions = getDefaultSearchOptions(SearchClient.Skemail);
+// {
+//   fuzzy: 0.07,
+//   prefix: (term) => term.length > 3,
+//   maxFuzzy: 1,
+//   boost: { subject: 1.25, from: 1.1, ccAddresses: 0.75, ... }
+// }
+
+// Get default search options for documents
+const editorOptions = getDefaultSearchOptions(SearchClient.Editor);
+// {
+//   fuzzy: 0.07,
+//   prefix: (term) => term.length > 3,
+//   maxFuzzy: 1,
+//   boost: { title: 1.25 }
+// }
+```
+
+Source: `libs/skiff-front-search/src/utils.ts:26`
+
+### Text Processing
+
+```typescript
+import { 
+  tokenizeAndStem,
+  sanitizeSearchQuery 
+} from 'skiff-front-search';
+
+// Tokenize and stem text for indexing
+const tokens = tokenizeAndStem('Running quickly through the forest');
+// ['run', 'quick', 'forest']
+// (stop words like 'the' are removed, words are stemmed)
+
+// Sanitize user search query
+const sanitized = sanitizeSearchQuery('user@example.com');
+// Returns cleaned query suitable for search
+```
+
+Source: `libs/skiff-front-search/src/utils.ts:1`
+
+### Result Sorting
+
+```typescript
+import { 
+  getSortableSearchResults,
+  chronSortResults,
+  groupResultsByRoughlyEquivalentScores 
+} from 'skiff-front-search';
+
+// Convert search results to sortable format
+const sortable = getSortableSearchResults(rawResults);
+
+// Sort results chronologically
+const sorted = chronSortResults(sortable, AscDesc.Desc);
+
+// Group results by similar relevance scores
+const grouped = groupResultsByRoughlyEquivalentScores(sorted);
+// Returns array of arrays, each containing similarly-scored results
+// [[high-score-1, high-score-2], [medium-score-1], [low-score-1, low-score-2]]
+```
+
+Source: `libs/skiff-front-search/src/utils.ts:46`
+
+### Date Filtering
+
+```typescript
+import { getCustomDateFilter } from 'skiff-front-search';
+
+// Create custom date filter
+const last30Days = getCustomDateFilter({
+  start: Date.now() - 30 * 24 * 60 * 60 * 1000,
+  end: Date.now()
+});
+
+// Use with search
+const results = searchIndex.search('query', last30Days);
+```
+
+Source: `libs/skiff-front-search/src/utils.ts:1`
+
+## Encryption
+
+Located in `libs/skiff-front-search/src/encryption.ts`
+
+### How Encryption Works
+
+```typescript
+import { encryptSearchIndex, decryptSearchIndex } from 'skiff-front-search';
+
+// Search indices are encrypted before storing in IndexedDB
+// 1. Index is serialized to JSON
+// 2. JSON is compressed
+// 3. Compressed data is encrypted with user's symmetric key
+// 4. Symmetric key is encrypted with user's public key
+
+// Encryption happens automatically in SearchIndex.save()
+// Decryption happens automatically in SearchIndex.loadOrCreate()
+```
+
+Source: `libs/skiff-front-search/src/encryption.ts:1`
+
+## Email Search Example
+
+Located in `libs/skiff-front-search/src/skemail.ts`
+
+```typescript
+import { createSearchIndexType, SearchClient } from 'skiff-front-search';
+
+interface SkemailIndexItem {
+  id: string;
+  updatedAt: number;
+  subject: string;
+  from: string;
+  to: string;
+  body: string;
+  ccAddresses?: string;
+  bccAddresses?: string;
+  cc?: string;
+  bcc?: string;
+}
+
+// Pre-configured email search
+const SkemailSearchIndex = createSearchIndexType<SkemailIndexItem, {}>(
+  SearchClient.Skemail,
+  {
+    fields: ['subject', 'from', 'to', 'body', 'ccAddresses', 'bccAddresses', 'cc', 'bcc'],
+    storeFields: ['id', 'updatedAt']
+  },
+  (userID) => `skemail-search-${userID}`,
+  {}
+);
+```
+
+Source: `libs/skiff-front-search/src/skemail.ts:1`
+
+## Document Search Example
+
+Located in `libs/skiff-front-search/src/editor.ts`
+
+```typescript
+import { createSearchIndexType, SearchClient } from 'skiff-front-search';
+
+interface EditorIndexItem {
+  id: string;
+  updatedAt: number;
+  title: string;
+  body: string;
+}
+
+// Pre-configured document search
+const EditorSearchIndex = createSearchIndexType<EditorIndexItem, {}>(
+  SearchClient.Editor,
+  {
+    fields: ['title', 'body'],
+    storeFields: ['id', 'updatedAt']
+  },
+  (userID) => `editor-search-${userID}`,
+  {}
+);
+```
+
+Source: `libs/skiff-front-search/src/editor.ts:1`
+
+## Stop Words
+
+Located in `libs/skiff-front-search/src/stopWords.ts`
+
+Common words filtered out during indexing to improve relevance:
+
+```typescript
+import { stopWords } from 'skiff-front-search';
+
+// Array of English stop words
+console.log(stopWords);
+// ['a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', ...]
+```
+
+Source: `libs/skiff-front-search/src/stopWords.ts:1`
+
+## Worker Wrapper
+
+Located in `libs/skiff-front-search/src/workerWrapper.ts`
+
+```typescript
+import { createSearchWorker } from 'skiff-front-search';
+
+// Run search operations in Web Worker for better performance
+const worker = createSearchWorker();
+
+// Offload heavy indexing to worker thread
+await worker.indexDocuments(documents);
+const results = await worker.search('query');
+```
+
+Source: `libs/skiff-front-search/src/workerWrapper.ts:1`
+
+## Complete Usage Example
+
+```typescript
+import { 
+  createSearchIndexType,
+  SearchClient,
+  DateRangeFilter 
+} from 'skiff-front-search';
+import { AscDesc } from 'skiff-graphql';
+
+// 1. Define your search index
+interface EmailItem {
+  id: string;
+  updatedAt: number;
+  subject: string;
+  from: string;
+  body: string;
+}
+
+const EmailSearch = createSearchIndexType<EmailItem, {}>(
+  SearchClient.Skemail,
+  {
+    fields: ['subject', 'from', 'body'],
+    storeFields: ['id', 'updatedAt'],
+    searchOptions: {
+      boost: { subject: 2, from: 1.5 },
+      fuzzy: 0.2,
+      prefix: true
+    }
+  },
+  (userID) => `email-search-${userID}`,
+  {}
+);
+
+// 2. Initialize search index
+const searchIndex = await EmailSearch.loadOrCreate(
+  currentUser.id,
+  currentUser.keys
+);
+
+// 3. Index emails as they're decrypted
+async function indexEmail(email: Email) {
+  searchIndex.add({
+    id: email.id,
+    updatedAt: email.updatedAt,
+    subject: email.decryptedSubject,
+    from: email.from,
+    body: email.decryptedBody
+  });
+}
+
+// 4. Search emails
+async function searchEmails(query: string, dateRange?: DateRangeFilter) {
+  if (!query.trim()) {
+    // Return recent items for empty query
+    return searchIndex.getRecentItems();
+  }
+
+  const results = searchIndex.search(
+    query,
+    dateRange,
+    AscDesc.Desc
+  );
+
+  // Fetch full email objects from results
+  return Promise.all(
+    results.map(result => fetchEmail(result.id))
+  );
+}
+
+// 5. Remove emails from index when deleted
+function removeEmail(emailID: string) {
+  searchIndex.remove(emailID);
+}
+
+// 6. Force save before user logs out
+async function onLogout() {
+  await searchIndex.save.flush();
+}
+```
+
+## Performance Considerations
+
+### Auto-Save Configuration
+
+The search index uses debounced saving:
+
+- **Debounce delay**: 5 seconds after last change
+- **Max wait**: 30 seconds (forces save even during continuous updates)
+
+This reduces IndexedDB write operations while ensuring data isn't lost.
+
+Source: `libs/skiff-front-search/src/searchIndex.ts:85`
+
+### Memory Management
+
+```typescript
+// Periodically vacuum the index to free memory
+await searchIndex.miniSearch.vacuum();
+
+// This removes discarded documents from memory
+// Called automatically during save()
+```
+
+Source: `libs/skiff-front-search/src/searchIndex.ts:87`
+
+## Installation
+
+This is a workspace package:
+
+```json
+{
+  "dependencies": {
+    "skiff-front-search": "workspace:libs/skiff-front-search"
+  }
+}
+```
+
+## Key Dependencies
+
+- **minisearch**: Full-text search engine
+- **idb-keyval**: IndexedDB wrapper
+- **stemmer**: Word stemming for better search
+- **lodash**: Utility functions
+- **comlink**: Web Worker communication
+- **skiff-crypto**: Encryption utilities
+- **skiff-graphql**: GraphQL types
+- **skiff-utils**: Shared utilities
+
+## Related Libraries
+
+- [skiff-crypto](/libraries/skiff-crypto) - Encryption for search indices
+- [skiff-graphql](/libraries/skiff-graphql) - GraphQL types
+- [skiff-utils](/libraries/skiff-utils) - Shared utilities
+- [skiff-front-utils](/libraries/skiff-front-utils) - Frontend utilities

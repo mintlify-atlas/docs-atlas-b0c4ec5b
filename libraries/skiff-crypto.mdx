@@ -1,0 +1,726 @@
+---
+title: skiff-crypto
+description: Versatile JavaScript cryptography library for strong end-to-end encryption
+---
+
+# skiff-crypto
+
+`skiff-crypto` is a versatile, open-source JavaScript cryptography library specifically designed to provide strong and efficient cryptographic functions for use in NodeJS or in the browser. This package powers cryptography inside Skiff's end-to-end encrypted, privacy-first product suite, including Mail, Pages, Drive, and Calendar applications.
+
+## Features
+
+- **Symmetric Key Cryptography**: ChaCha20Poly1305-based symmetric encryption functions
+- **Asymmetric Key Cryptography**: TweetNaCl-based asymmetric encryption
+- **Datagram Library**: Manage object versions and metadata in an efficient way
+- **Integrity**: Support for checksum and data integrity verification
+- **Utilities**: Collection of useful utilities for working with cryptographic data
+
+## Installation
+
+<CodeGroup>
+
+```bash npm
+npm install @skiff-org/skiff-crypto
+```
+
+```bash yarn
+yarn add @skiff-org/skiff-crypto
+```
+
+</CodeGroup>
+
+## Quick Start
+
+```javascript
+const skiffCrypto = require('@skiff-org/skiff-crypto');
+// or
+import * as skiffCrypto from '@skiff-org/skiff-crypto';
+
+// Asymmetric encryption example
+const plaintext = "Hello, skiff-crypto!";
+const keypair = skiffCrypto.generatePublicPrivateKeyPair();
+const encrypted = skiffCrypto.stringEncryptAsymmetric(
+  keypair.privateKey,
+  { key: keypair.publicKey },
+  plaintext
+);
+const decrypted = skiffCrypto.stringDecryptAsymmetric(
+  keypair.privateKey,
+  { key: keypair.publicKey },
+  encrypted
+);
+
+console.log('Plaintext:', plaintext);
+console.log('Ciphertext:', encrypted);
+console.log('Expected to be true:', plaintext === decrypted);
+```
+
+## Key Management
+
+### generateSymmetricKey
+
+Generate a symmetric key for encryption.
+
+```typescript
+function generateSymmetricKey(): string
+```
+
+**Returns:** Base64-encoded symmetric key
+
+**Example:**
+
+```javascript
+const symmetricKey = skiffCrypto.generateSymmetricKey();
+console.log('Symmetric key:', symmetricKey);
+```
+
+**Source:** `libs/skiff-crypto/src/keys.ts:14`
+
+### generatePublicPrivateKeyPair
+
+Generate public and private key pairs for signing and encryption.
+
+```typescript
+function generatePublicPrivateKeyPair(): SigningAndEncryptionKeypairs
+```
+
+**Returns:**
+
+<ResponseField name="publicKey" type="string" required>
+  Base64-encoded public encryption key
+</ResponseField>
+
+<ResponseField name="privateKey" type="string" required>
+  Base64-encoded private encryption key
+</ResponseField>
+
+<ResponseField name="signingPublicKey" type="string" required>
+  Base64-encoded public signing key
+</ResponseField>
+
+<ResponseField name="signingPrivateKey" type="string" required>
+  Base64-encoded private signing key
+</ResponseField>
+
+**Example:**
+
+```javascript
+const keypair = skiffCrypto.generatePublicPrivateKeyPair();
+console.log('Public key:', keypair.publicKey);
+console.log('Private key:', keypair.privateKey);
+console.log('Signing public key:', keypair.signingPublicKey);
+console.log('Signing private key:', keypair.signingPrivateKey);
+```
+
+**Source:** `libs/skiff-crypto/src/keys.ts:82`
+
+### createKeyFromSecret
+
+Deterministically generate a key from a secret value and salt using Argon2id.
+
+```typescript
+async function createKeyFromSecret(
+  secret: string,
+  argonSalt: string
+): Promise<string>
+```
+
+<ParamField path="secret" type="string" required>
+  Secret value to derive key from
+</ParamField>
+
+<ParamField path="argonSalt" type="string" required>
+  Salt for Argon2 hashing
+</ParamField>
+
+**Returns:** Base64-encoded derived key
+
+**Source:** `libs/skiff-crypto/src/keys.ts:27`
+
+### createSRPKey
+
+Generate a key for SRP authentication from master secret using HKDF.
+
+```typescript
+function createSRPKey(masterSecret: string, salt: string): string
+```
+
+<ParamField path="masterSecret" type="string" required>
+  Master secret used for HKDF
+</ParamField>
+
+<ParamField path="salt" type="string" required>
+  Salt for SRP key
+</ParamField>
+
+**Returns:** SRP private key in hexadecimal format
+
+**Source:** `libs/skiff-crypto/src/keys.ts:59`
+
+### createPasswordDerivedSecret
+
+Generate the password-derived secret (a symmetric key that encrypts user's private keys).
+
+```typescript
+function createPasswordDerivedSecret(
+  masterSecret: string,
+  salt: string
+): string
+```
+
+<ParamField path="masterSecret" type="string" required>
+  User's master secret for HKDF input
+</ParamField>
+
+<ParamField path="salt" type="string" required>
+  Salt to use in HKDF
+</ParamField>
+
+**Returns:** Base64-encoded password derived secret
+
+**Source:** `libs/skiff-crypto/src/keys.ts:102`
+
+### generateVerificationPhraseFromSigningKey
+
+Generate verification mnemonic using BIP39-like methodology.
+
+```typescript
+function generateVerificationPhraseFromSigningKey(
+  publicSigningKey: string
+): string
+```
+
+<ParamField path="publicSigningKey" type="string" required>
+  Public signing key of user to be verified
+</ParamField>
+
+**Returns:** Mnemonic sentence for verification
+
+**Source:** `libs/skiff-crypto/src/keys.ts:120`
+
+## Asymmetric Encryption
+
+### stringEncryptAsymmetric
+
+Encrypt a string using asymmetric encryption (NaCl box).
+
+```typescript
+function stringEncryptAsymmetric(
+  myPrivateKey: string,
+  theirPublicKey: { key: string },
+  plaintext: string
+): string
+```
+
+<ParamField path="myPrivateKey" type="string" required>
+  User's private encryption key
+</ParamField>
+
+<ParamField path="theirPublicKey" type="object" required>
+  Recipient's public key object
+</ParamField>
+
+<ParamField path="plaintext" type="string" required>
+  Plaintext to encrypt
+</ParamField>
+
+**Returns:** Base64-encoded encrypted ciphertext
+
+**Example:**
+
+```javascript
+const keypair = skiffCrypto.generatePublicPrivateKeyPair();
+const encrypted = skiffCrypto.stringEncryptAsymmetric(
+  keypair.privateKey,
+  { key: keypair.publicKey },
+  "Hello, World!"
+);
+```
+
+**Source:** `libs/skiff-crypto/src/asymmetricEncryption.ts:57`
+
+### stringDecryptAsymmetric
+
+Decrypt a string using asymmetric encryption (NaCl box).
+
+```typescript
+function stringDecryptAsymmetric(
+  myPrivateKey: string,
+  theirPublicKey: { key: string },
+  encryptedText: string
+): string
+```
+
+<ParamField path="myPrivateKey" type="string" required>
+  User's private encryption key
+</ParamField>
+
+<ParamField path="theirPublicKey" type="object" required>
+  Recipient's public key object
+</ParamField>
+
+<ParamField path="encryptedText" type="string" required>
+  Encrypted data to decrypt
+</ParamField>
+
+**Returns:** Decrypted plaintext string
+
+<Note>
+This function is memoized for performance optimization.
+</Note>
+
+**Source:** `libs/skiff-crypto/src/asymmetricEncryption.ts:74`
+
+## Symmetric Encryption
+
+### encryptSymmetric
+
+Symmetric encryption using NaCl secretbox (secret-key authenticated encryption).
+
+```typescript
+function encryptSymmetric<T>(
+  content: T,
+  symmetricKey: string,
+  datagram: Datagram<T>
+): string
+```
+
+<ParamField path="content" type="T" required>
+  The object being serialized and encrypted
+</ParamField>
+
+<ParamField path="symmetricKey" type="string" required>
+  Base64-encoded symmetric key
+</ParamField>
+
+<ParamField path="datagram" type="Datagram<T>" required>
+  Mechanism to convert instances of T to a Datagram
+</ParamField>
+
+**Returns:** Base64-encoded encrypted payload
+
+**Example:**
+
+```javascript
+const symmetricKey = skiffCrypto.generateSymmetricKey();
+const TestDatagram = skiffCrypto.createJSONWrapperDatagram('ddl://test');
+const plainText = "Hello, skiff-crypto (symmetric encryption)!";
+const encrypted = skiffCrypto.encryptSymmetric(
+  plainText,
+  symmetricKey,
+  TestDatagram
+);
+```
+
+**Source:** `libs/skiff-crypto/src/symmetricEncryption.ts:31`
+
+### decryptSymmetric
+
+Symmetric decryption using NaCl secretbox (secret-key authenticated encryption).
+
+```typescript
+function decryptSymmetric<T>(
+  message: string,
+  symmetricKey: string,
+  DatagramType: Datagram<T>
+): T
+```
+
+<ParamField path="message" type="string" required>
+  Base64-encoded encrypted payload
+</ParamField>
+
+<ParamField path="symmetricKey" type="string" required>
+  Base64-encoded key used for decryption
+</ParamField>
+
+<ParamField path="DatagramType" type="Datagram<T>" required>
+  The type of object being decrypted
+</ParamField>
+
+**Returns:** Decrypted message contents
+
+**Example:**
+
+```javascript
+const decrypted = skiffCrypto.decryptSymmetric(
+  encrypted,
+  symmetricKey,
+  TestDatagram
+);
+console.log('Decrypted:', decrypted);
+```
+
+**Source:** `libs/skiff-crypto/src/symmetricEncryption.ts:61`
+
+### rawEncryptSymmetric
+
+Symmetric encryption returning raw data without base64 encoding.
+
+```typescript
+function rawEncryptSymmetric<T>(
+  content: T,
+  symmetricKey: string,
+  datagram: Datagram<T>
+): Uint8Array
+```
+
+<ParamField path="content" type="T" required>
+  The object being serialized
+</ParamField>
+
+<ParamField path="symmetricKey" type="string" required>
+  Base64-encoded symmetric key
+</ParamField>
+
+<ParamField path="datagram" type="Datagram<T>" required>
+  Mechanism to convert instances of T to a Datagram
+</ParamField>
+
+**Returns:** Uint8Array encrypted payload
+
+**Source:** `libs/skiff-crypto/src/symmetricEncryption.ts:16`
+
+### rawDecryptSymmetric
+
+Symmetric decryption without base64 encoding.
+
+```typescript
+function rawDecryptSymmetric<T>(
+  message: Uint8Array,
+  symmetricKey: string,
+  DatagramType: Datagram<T>
+): T
+```
+
+<ParamField path="message" type="Uint8Array" required>
+  Encrypted payload as raw bytes
+</ParamField>
+
+<ParamField path="symmetricKey" type="string" required>
+  Base64-encoded key used for decryption
+</ParamField>
+
+<ParamField path="DatagramType" type="Datagram<T>" required>
+  The type of object being decrypted
+</ParamField>
+
+**Returns:** Decrypted message contents
+
+**Source:** `libs/skiff-crypto/src/symmetricEncryption.ts:45`
+
+## Datagram System
+
+Datagrams provide a versioned, typed way to serialize and deserialize encrypted data with metadata support.
+
+### createJSONWrapperDatagram
+
+Create a datagram that encodes and decodes any JSON.stringify-able data in an object containing `{version, type, data}`.
+
+```typescript
+function createJSONWrapperDatagram<T>(
+  type: string,
+  version?: string,
+  versionConstraint?: Range
+): Datagram<T>
+```
+
+<ParamField path="type" type="string" required>
+  Datagram type identifier (e.g., 'ddl://test')
+</ParamField>
+
+<ParamField path="version" type="string" default="0.1.0">
+  Datagram version
+</ParamField>
+
+<ParamField path="versionConstraint" type="Range" default="0.1.*">
+  Datagram version constraint
+</ParamField>
+
+**Returns:** Datagram instance for encrypting/decrypting typed data
+
+**Example:**
+
+```javascript
+const TestDatagram = skiffCrypto.createJSONWrapperDatagram('ddl://test');
+const symmetricKey = skiffCrypto.generateSymmetricKey();
+const data = { message: "Hello, World!" };
+const encrypted = skiffCrypto.encryptSymmetric(data, symmetricKey, TestDatagram);
+const decrypted = skiffCrypto.decryptSymmetric(encrypted, symmetricKey, TestDatagram);
+```
+
+**Source:** `libs/skiff-crypto/src/datagramBuilders.ts:15`
+
+### createRawJSONDatagram
+
+Create a datagram that encodes and decodes any JSON.stringify-able data without wrapping in version/type metadata.
+
+```typescript
+function createRawJSONDatagram<T>(
+  type: string,
+  version?: string,
+  versionConstraint?: Range
+): Datagram<T>
+```
+
+<ParamField path="type" type="string" required>
+  Datagram type identifier
+</ParamField>
+
+<ParamField path="version" type="string" default="0.1.0">
+  Datagram version
+</ParamField>
+
+<ParamField path="versionConstraint" type="Range" default="0.1.*">
+  Datagram version constraint
+</ParamField>
+
+**Returns:** Datagram instance without metadata wrapper
+
+<Note>
+This is recommended for new code as version and type info are already contained in the encryption header.
+</Note>
+
+**Source:** `libs/skiff-crypto/src/datagramBuilders.ts:44`
+
+### createRawCompressedJSONDatagram
+
+Create a datagram that encodes and decodes JSON data with gzip compression.
+
+```typescript
+function createRawCompressedJSONDatagram<T>(
+  type: string,
+  version?: string,
+  versionConstraint?: Range
+): Datagram<T>
+```
+
+<ParamField path="type" type="string" required>
+  Datagram type identifier
+</ParamField>
+
+<ParamField path="version" type="string" default="0.1.0">
+  Datagram version
+</ParamField>
+
+<ParamField path="versionConstraint" type="Range" default="0.1.*">
+  Datagram version constraint
+</ParamField>
+
+**Returns:** Datagram instance with compression support
+
+**Source:** `libs/skiff-crypto/src/datagramBuilders.ts:68`
+
+### createUint8ArrayDatagram
+
+Create a datagram that encodes and decodes raw Uint8Array objects for optimal size.
+
+```typescript
+function createUint8ArrayDatagram(
+  type: string,
+  version?: string,
+  versionConstraint?: Range
+): Datagram<Uint8Array>
+```
+
+<ParamField path="type" type="string" required>
+  Datagram type identifier
+</ParamField>
+
+<ParamField path="version" type="string" default="0.1.0">
+  Datagram version
+</ParamField>
+
+<ParamField path="versionConstraint" type="Range" default="0.1.*">
+  Datagram version constraint
+</ParamField>
+
+**Returns:** Datagram instance for raw binary data
+
+**Source:** `libs/skiff-crypto/src/datagramBuilders.ts:96`
+
+## Hashing
+
+### generateHash
+
+Generate a SHA-512 hash of the given value.
+
+```typescript
+function generateHash(value: string): string
+```
+
+<ParamField path="value" type="string" required>
+  String to hash
+</ParamField>
+
+**Returns:** Base64-encoded SHA-512 hash
+
+**Example:**
+
+```javascript
+const hash = skiffCrypto.generateHash('Hello, skiff-crypto!');
+console.log('SHA-512 hash:', hash);
+```
+
+**Source:** `libs/skiff-crypto/src/hash.ts:10`
+
+## Digital Signatures
+
+### createDetachedSignatureAsymmetric
+
+Create a detached signature from a message with context.
+
+```typescript
+function createDetachedSignatureAsymmetric(
+  message: string,
+  signingPrivateKey: string,
+  context: SignatureContext,
+  additionalContext?: AdditionalContext
+): string
+```
+
+<ParamField path="message" type="string" required>
+  Message to sign
+</ParamField>
+
+<ParamField path="signingPrivateKey" type="string" required>
+  User's signing private key
+</ParamField>
+
+<ParamField path="context" type="SignatureContext" required>
+  Signature context to prevent re-interpretation
+</ParamField>
+
+<ParamField path="additionalContext" type="AdditionalContext">
+  Optional additional context
+</ParamField>
+
+**Returns:** Base64-encoded signature
+
+**Source:** `libs/skiff-crypto/src/signature.ts:96`
+
+### verifyDetachedSignatureAsymmetric
+
+Verify a signature on provided message given context.
+
+```typescript
+function verifyDetachedSignatureAsymmetric(
+  message: string,
+  signature: string,
+  signingPublicKey: string,
+  context: SignatureContext,
+  additionalContext?: AdditionalContext
+): boolean
+```
+
+<ParamField path="message" type="string" required>
+  Message to verify
+</ParamField>
+
+<ParamField path="signature" type="string" required>
+  Signature to check
+</ParamField>
+
+<ParamField path="signingPublicKey" type="string" required>
+  User's signing public key
+</ParamField>
+
+<ParamField path="context" type="SignatureContext" required>
+  Signature context
+</ParamField>
+
+<ParamField path="additionalContext" type="AdditionalContext">
+  Optional additional context
+</ParamField>
+
+**Returns:** Boolean indicating whether signature is valid
+
+**Source:** `libs/skiff-crypto/src/signature.ts:73`
+
+### SignatureContext
+
+Enumeration of signature contexts to prevent signature re-interpretation:
+
+```typescript
+enum SignatureContext {
+  DeleteAccount = 'DELETE_ACCOUNT',
+  DeleteDoc = 'DELETE_DOC',
+  DeleteRecoveryData = 'DELETE_RECOVERY_DATA',
+  DisableMfa = 'DISABLE_MFA',
+  DocumentChunk = 'DOCUMENT_CHUNK',
+  DocumentData = 'DOCUMENT_DATA',
+  DocumentMetadata = 'DOCUMENT_METADATA',
+  DocumentParent = 'DOCUMENT_PARENT',
+  EnrollMfa = 'ENROLL_MFA',
+  LinksLinkKey = 'LINKS_LINK_KEY',
+  LinksSessionKey = 'LINKS_SESSION_KEY',
+  RecoveryData = 'RECOVERY_DATA',
+  RegenerateMfaBackupCodes = 'REGENERATE_MFA_BACKUP_CODES',
+  SessionKey = 'SESSION_KEY',
+  SrpSalt = 'SRP_SALT',
+  SrpVerifier = 'SRP_VERIFIER',
+  UnshareDoc = 'UNSHARE_DOC',
+  UpdateUserData = 'UPDATE_USER_DATA',
+  UserData = 'USER_DATA',
+  UserPublicKey = 'USER_PUBLIC_KEY',
+  EmailContent = 'EMAIL_CONTENT',
+  MobileLogin = 'MOBILE_LOGIN'
+}
+```
+
+**Source:** `libs/skiff-crypto/src/signature.ts:12`
+
+## Complete Example
+
+```javascript
+import * as skiffCrypto from '@skiff-org/skiff-crypto';
+
+// Generate keys
+const keypair = skiffCrypto.generatePublicPrivateKeyPair();
+const symmetricKey = skiffCrypto.generateSymmetricKey();
+
+// Asymmetric encryption
+const plaintext = "Hello, skiff-crypto!";
+const encrypted = skiffCrypto.stringEncryptAsymmetric(
+  keypair.privateKey,
+  { key: keypair.publicKey },
+  plaintext
+);
+const decrypted = skiffCrypto.stringDecryptAsymmetric(
+  keypair.privateKey,
+  { key: keypair.publicKey },
+  encrypted
+);
+
+console.log('Asymmetric encryption works:', plaintext === decrypted);
+
+// Symmetric encryption with datagram
+const TestDatagram = skiffCrypto.createJSONWrapperDatagram('ddl://test');
+const symmetricPlainText = "Hello, skiff-crypto (symmetric encryption)!";
+const symmetricEncrypted = skiffCrypto.encryptSymmetric(
+  symmetricPlainText,
+  symmetricKey,
+  TestDatagram
+);
+const symmetricDecrypted = skiffCrypto.decryptSymmetric(
+  symmetricEncrypted,
+  symmetricKey,
+  TestDatagram
+);
+
+console.log('Symmetric encryption works:', symmetricPlainText === symmetricDecrypted);
+
+// Hash example
+const hash = skiffCrypto.generateHash('Hello, skiff-crypto!');
+console.log('SHA-512 hash:', hash);
+```
+
+## Security
+
+Cryptography is a sensitive domain. While `skiff-crypto` has been audited and built using widely-used, audited libraries (TweetNaCl, ChaCha20Poly1305, Argon2), we urge you to use this library responsibly. Please have a sound understanding of the underlying principles of cryptography before implementation.
+
+Security issues or questions can be sent to [security@skiff.org](mailto:security@skiff.org).
+
+## License
+
+`skiff-crypto` is MIT licensed. See the [LICENSE](https://github.com/skiff-org/skiff-apps/blob/main/libs/skiff-crypto/LICENSE.txt) file for details.
