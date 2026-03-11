@@ -1,0 +1,146 @@
+{
+  "projectType": "saas",
+  "projectName": "Skiff",
+  "projectDescription": "Privacy-first, end-to-end encrypted workspace with Mail, Calendar, Pages, and Drive.",
+  "theme": "almond",
+  "primaryColor": "#ea5b3c",
+  "lightColor": "#8c3627",
+  "darkColor": "#040404",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "introduction",
+              "features",
+              "security-model"
+            ]
+          },
+          {
+            "group": "Getting Started",
+            "pages": [
+              "getting-started/quickstart",
+              "getting-started/local-development",
+              "getting-started/architecture"
+            ]
+          },
+          {
+            "group": "Applications",
+            "pages": [
+              "applications/mail",
+              "applications/calendar",
+              "applications/pages",
+              "applications/drive"
+            ]
+          },
+          {
+            "group": "Cryptography",
+            "pages": [
+              "cryptography/overview",
+              "cryptography/encryption",
+              "cryptography/key-management",
+              "cryptography/private-search"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/setup",
+              "development/monorepo-structure",
+              "development/contributing",
+              "development/testing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Libraries",
+        "groups": [
+          {
+            "group": "Cryptography Libraries",
+            "pages": [
+              "libraries/skiff-crypto",
+              "libraries/skiff-crypto-v2"
+            ]
+          },
+          {
+            "group": "UI & Components",
+            "pages": [
+              "libraries/nightwatch-ui",
+              "libraries/skiff-prosemirror"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "libraries/skiff-utils",
+              "libraries/skiff-front-utils",
+              "libraries/skiff-graphql",
+              "libraries/skiff-ics",
+              "libraries/skiff-front-search"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Crypto API",
+            "pages": [
+              "api/crypto/symmetric-encryption",
+              "api/crypto/asymmetric-encryption",
+              "api/crypto/key-generation",
+              "api/crypto/hashing",
+              "api/crypto/signatures"
+            ]
+          },
+          {
+            "group": "UI Components",
+            "pages": [
+              "api/components/button",
+              "api/components/input",
+              "api/components/dialog",
+              "api/components/dropdown"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "End-to-end encrypted email with Skiff Mail",
+    "End-to-end encrypted calendar with event management",
+    "End-to-end encrypted document editor (Pages)",
+    "End-to-end encrypted file storage (Drive)",
+    "Private client-side search indexing",
+    "Asymmetric encryption with TweetNaCl",
+    "Symmetric encryption with ChaCha20Poly1305",
+    "Reusable UI component library (Nightwatch UI)",
+    "Rich text editor built on ProseMirror",
+    "GraphQL API integration",
+    "Custom domains and email aliases",
+    "Anonymous crypto wallet payments"
+  ],
+  "publicApiSurface": [
+    "generatePublicPrivateKeyPair() - Generate asymmetric key pairs",
+    "stringEncryptAsymmetric() - Asymmetric string encryption",
+    "stringDecryptAsymmetric() - Asymmetric string decryption",
+    "generateSymmetricKey() - Generate symmetric encryption keys",
+    "encryptSymmetric() - Symmetric data encryption",
+    "decryptSymmetric() - Symmetric data decryption",
+    "generateHash() - SHA-512 hashing",
+    "signDetached() - Digital signature generation",
+    "verifyDetached() - Digital signature verification",
+    "createJSONWrapperDatagram() - Create versioned data containers",
+    "Button - Reusable button component",
+    "InputField - Text input component",
+    "Dialog - Modal dialog component",
+    "Dropdown - Dropdown menu component",
+    "Avatar - User avatar component",
+    "IconText - Icon with text component"
+  ]
+}
